@@ -6,17 +6,17 @@
 #    By: gkehren <gkehren@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/07/30 22:16:55 by gkehren           #+#    #+#              #
-#    Updated: 2023/08/05 01:31:22 by gkehren          ###   ########.fr        #
+#    Updated: 2023/08/05 19:11:37 by gkehren          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-FILES:= main
+FILES:= main Scop
 NAME:= scop
 
 # ------------------
 CC:=c++
 SRCPATH:=src/
-INCLUDES:=
+INCLUDES:= -I includes/ -I imgui/
 CCHPATH:=obj/
 CFLAGS:=-lGLEW -lGL -lglfw
 # ==================
