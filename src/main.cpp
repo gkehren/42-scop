@@ -7,6 +7,7 @@
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl_glfw.h"
 #include "../imgui/imgui_impl_opengl3.h"
+#include "../imgui/ImGuiFileDialog.h"
 
 // Dimensions de la fenêtre
 const int WINDOW_WIDTH = 1920;
@@ -167,7 +168,7 @@ int main()
 	float deltaTime = 0.0f;
 	float lastFrame = 0.0f;
 	float totalTime = 0.0f;
-	const float updateInterval = 0.2f;
+	const float updateInterval = 0.1f;
 	int frames = 0;
 
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -177,6 +178,7 @@ int main()
 	float yaw = -90.0f;
 	float pitch = 0.0f;
 	float distanceFromCube = 3.0f;
+	float fps = 0.0f;
 
 	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);  // Position initiale de la caméra
 	glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -195,7 +197,6 @@ int main()
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		ImGui::ShowDemoWindow();
 
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
@@ -215,7 +216,6 @@ int main()
 
 		float xoffset = xPos - lastX;
 		float yoffset = lastY - yPos;
-
 
 		float sensitivity = 0.005f;
 		xoffset *= sensitivity;
@@ -250,7 +250,6 @@ int main()
 		glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, cameraUp);
 		glm::mat4 model = glm::mat4(1.0f);
 
-		// Effacez l'écran
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -265,18 +264,43 @@ int main()
 
 		if (totalTime >= updateInterval)
 		{
-			float fps = static_cast<float>(frames) / totalTime;
-			ImGui::SetNextWindowPos(ImVec2(10, 10));
-			ImGui::Begin("FPS Display", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-			ImGui::Text("FPS : %.0f", fps);
-			ImGui::End();
+			fps = static_cast<float>(frames) / totalTime;
 			frames = 0;
 			totalTime = 0.0f;
 		}
+		ImGui::Begin("scop");
+		ImGui::Text("FPS : %.1f", fps);
+		ImGui::Text("Camera position : (%.1f, %.1f, %.1f)", cameraPos.x, cameraPos.y, cameraPos.z);
+		ImGui::Text("Camera front : (%.1f, %.1f, %.1f)", cameraFront.x, cameraFront.y, cameraFront.z);
+		ImGui::Text("Camera target : (%.1f, %.1f, %.1f)", cameraTarget.x, cameraTarget.y, cameraTarget.z);
+		ImGui::Text("Camera up : (%.1f, %.1f, %.1f)", cameraUp.x, cameraUp.y, cameraUp.z);
+		ImGui::Text("Yaw : %.1f", yaw);
+		ImGui::Text("Pitch : %.1f", pitch);
+		if (ImGui::Button("Reset camera"))
+		{
+			yaw = -90.0f;
+			pitch = 0.0f;
+			distanceFromCube = 3.0f;
+		}
+		// File Dialog
+		if (ImGui::Button("Open File"))
+			ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj", ".");
+
+		if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+		{
+			if (ImGuiFileDialog::Instance()->IsOk())
+			{
+				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+				std::cout << "filePathName: " <<  filePathName << std::endl;
+			}
+			ImGuiFileDialog::Instance()->Close();
+		}
+
+		ImGui::End();
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	
+
 		glfwSwapBuffers(window);
 	}
 
