@@ -6,7 +6,7 @@
 #    By: gkehren <gkehren@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/07/30 22:16:55 by gkehren           #+#    #+#              #
-#    Updated: 2023/07/30 22:50:19 by gkehren          ###   ########.fr        #
+#    Updated: 2023/08/05 01:31:22 by gkehren          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -34,6 +34,7 @@ EOC:="\033[0;0m"
 # ------ Auto ------
 SRC:=$(addprefix $(SRCPATH),$(addsuffix .cpp,$(FILES)))
 OBJ:=$(addprefix $(CCHPATH),$(addsuffix .o,$(FILES)))
+SRC+= $(wildcard imgui/*.cpp)
 # ==================
 CCHF:=.cache_exists
 
