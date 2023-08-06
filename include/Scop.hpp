@@ -66,6 +66,7 @@ class Scop
 		std::vector<glm::vec3> vertices;
 		std::vector<unsigned int> vertexIndices;
 		std::vector<glm::vec3> normals;
+		std::vector<glm::vec2> textures;
 
 		void	cameraMovement();
 		void	updateUI();

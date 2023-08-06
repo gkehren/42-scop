@@ -311,6 +311,8 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	this->vertices.clear();
 	this->vertexIndices.clear();
+	this->normals.clear();
+	this->textures.clear();
 
 	std::string line;
 	while (std::getline(objFile, line))
@@ -322,54 +324,77 @@ void	Scop::loadObjFile(std::string filePathName)
 		{
 			glm::vec3 vertex;
 			iss >> vertex.x >> vertex.y >> vertex.z;
-			std::cout << "Vertex: " << vertex.x << " " << vertex.y << " " << vertex.z << std::endl;
 			this->vertices.push_back(vertex);
+		}
+		else if (type == "vn")
+		{
+			glm::vec3 normal;
+			iss >> normal.x >> normal.y >> normal.z;
+			this->normals.push_back(normal);
+		}
+		else if (type == "vt")
+		{
+			glm::vec2 texture;
+			iss >> texture.x >> texture.y;
+			this->textures.push_back(texture);
 		}
 		else if (type == "f")
 		{
-			std::vector<unsigned int> faceIndices;
+			std::vector<unsigned int> faceVertexIndices;
+			std::vector<unsigned int> faceTextureIndices;
+			std::vector<unsigned int> faceNormalIndices;
+
 			unsigned int index;
-
 			while (iss >> index)
-				faceIndices.push_back(index - 1);
-
-			if (faceIndices.size() == 3)
 			{
-				vertexIndices.push_back(faceIndices[0]);
-				vertexIndices.push_back(faceIndices[1]);
-				vertexIndices.push_back(faceIndices[2]);
+				faceVertexIndices.push_back(index - 1);
+
+				if (iss.peek() == '/')
+				{
+					iss.ignore();
+					if (iss.peek() != '/')
+					{
+						iss >> index;
+						faceTextureIndices.push_back(index - 1);
+					}
+					if (iss.peek() == '/')
+					{
+						iss.ignore();
+						iss >> index;
+						faceNormalIndices.push_back(index - 1);
+					}
+				}
 			}
-			else if (faceIndices.size() == 4)
-			{
-				vertexIndices.push_back(faceIndices[0]);
-				vertexIndices.push_back(faceIndices[1]);
-				vertexIndices.push_back(faceIndices[2]);
 
-				vertexIndices.push_back(faceIndices[0]);
-				vertexIndices.push_back(faceIndices[2]);
-				vertexIndices.push_back(faceIndices[3]);
+			for (size_t i = 1; i < faceVertexIndices.size() - 1; ++i)
+			{
+				this->vertexIndices.push_back(faceVertexIndices[0]);
+				this->vertexIndices.push_back(faceVertexIndices[i]);
+				this->vertexIndices.push_back(faceVertexIndices[i + 1]);
 			}
 		}
 	}
 
-	this->normals.clear();
-	this->normals.resize(this->vertices.size(), glm::vec3(0.0f, 0.0f, 0.0f));
-
-	for (size_t i = 0; i < vertexIndices.size(); i += 3)
+	if (normals.empty())
 	{
-		glm::vec3 v1 = this->vertices[this->vertexIndices[i]];
-		glm::vec3 v2 = this->vertices[this->vertexIndices[i + 1]];
-		glm::vec3 v3 = this->vertices[this->vertexIndices[i + 2]];
+		this->normals.resize(this->vertices.size(), glm::vec3(0.0f, 0.0f, 0.0f));
 
-		glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
+		for (size_t i = 0; i < this->vertexIndices.size(); i += 3)
+		{
+			glm::vec3 v1 = this->vertices[this->vertexIndices[i]];
+			glm::vec3 v2 = this->vertices[this->vertexIndices[i + 1]];
+			glm::vec3 v3 = this->vertices[this->vertexIndices[i + 2]];
 
-		this->normals[this->vertexIndices[i]] += normal;
-		this->normals[this->vertexIndices[i + 1]] += normal;
-		this->normals[this->vertexIndices[i + 2]] += normal;
+			glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
+
+			this->normals[this->vertexIndices[i]] += normal;
+			this->normals[this->vertexIndices[i + 1]] += normal;
+			this->normals[this->vertexIndices[i + 2]] += normal;
+		}
+
+		for (size_t i = 0; i < this->normals.size(); ++i)
+			this->normals[i] = glm::normalize(this->normals[i]);
 	}
-
-	for (size_t i = 0; i < this->normals.size(); i++)
-		this->normals[i] = glm::normalize(this->normals[i]);
 
 	glGenVertexArrays(1, &this->VAO);
 	glGenBuffers(1, &this->VBO);
@@ -382,19 +407,17 @@ void	Scop::loadObjFile(std::string filePathName)
 	glBufferData(GL_ARRAY_BUFFER, this->vertices.size() * sizeof(glm::vec3), &this->vertices[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->vertexIndices.size() * sizeof(unsigned int), &this->vertexIndices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertexIndices.size() * sizeof(unsigned int), &vertexIndices[0], GL_STATIC_DRAW);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
 	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(glm::vec3), &this->normals[0], GL_STATIC_DRAW);
-	glBindVertexArray(this->VAO);
-	glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(1); 
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
 	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
