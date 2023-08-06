@@ -54,6 +54,7 @@ class Scop
 		unsigned int VAO;
 		unsigned int VBO;
 		unsigned int EBO;
+		GLuint normalVBO;
 
 		unsigned int vertexShader;
 		unsigned int fragmentShader;
@@ -61,6 +62,7 @@ class Scop
 
 		std::vector<glm::vec3> vertices;
 		std::vector<unsigned int> vertexIndices;
+		std::vector<glm::vec3> normals;
 
 		void	cameraMovement();
 		void	updateUI();

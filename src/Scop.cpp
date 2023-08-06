@@ -1,25 +1,32 @@
 #include "../include/Scop.hpp"
 
 const char* vertexShaderSource = R"(
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
+	#version 330 core
+	layout (location = 0) in vec3 aPos;
+	layout (location = 1) in vec3 aNormal;
 
-    uniform mat4 model;
-    uniform mat4 view;
-    uniform mat4 projection;
+	out vec3 FragPos;
+	out vec3 Normal;
 
-    void main() {
-        gl_Position = projection * view * model * vec4(aPos, 1.0);
-    }
+	uniform mat4 model;
+	uniform mat4 view;
+	uniform mat4 projection;
+
+	void main() {
+		gl_Position = projection * view * model * vec4(aPos, 1.0);
+		FragPos = vec3(model * vec4(aPos, 1.0));
+		Normal = mat3(transpose(inverse(model))) * aNormal;
+	}
 )";
 
 const char* fragmentShaderSource = R"(
-    #version 330 core
-    out vec4 FragColor;
+	#version 330 core
+	out vec4 FragColor;
 
-    void main() {
-        FragColor = vec4(0.5, 0.5, 1.0, 1.0); // Bleu clair
-    }
+	void main() {
+        float gray = (float((gl_PrimitiveID) % 5) / 10.0) * 0.4 + 0.02;
+		FragColor = vec4(gray, gray, gray, 1.0);
+	}
 )";
 
 void	errorCallback(int error, const char* description)
@@ -78,6 +85,7 @@ Scop::Scop()
 	ImGui_ImplOpenGL3_Init();
 
 	glEnable(GL_DEPTH_TEST);
+	// glEnable(GL_CULL_FACE);
 
 	this->deltaTime = 0.0f;
 	this->lastFrame = 0.0f;
@@ -144,7 +152,11 @@ void	Scop::run()
 		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(this->projection));
 
 		glBindVertexArray(this->VAO);
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 		glDrawElements(GL_TRIANGLES, this->vertexIndices.size(), GL_UNSIGNED_INT, 0);
+		glDisableVertexAttribArray(1);
 		glBindVertexArray(0);
 
 		this->updateUI();
@@ -280,21 +292,47 @@ void	Scop::loadObjFile(std::string filePathName)
 		{
 			glm::vec3 vertex;
 			iss >> vertex.x >> vertex.y >> vertex.z;
+			std::cout << "Vertex: " << vertex.x << " " << vertex.y << " " << vertex.z << std::endl;
 			this->vertices.push_back(vertex);
 		}
 		else if (type == "f")
 		{
 			unsigned int vertexIndex1, vertexIndex2, vertexIndex3;
 			iss >> vertexIndex1 >> vertexIndex2 >> vertexIndex3;
+			std::cout << "Face: " << vertexIndex1 << " " << vertexIndex2 << " " << vertexIndex3 << std::endl;
 			vertexIndices.push_back(vertexIndex1 - 1);
 			vertexIndices.push_back(vertexIndex2 - 1);
 			vertexIndices.push_back(vertexIndex3 - 1);
 		}
 	}
 
+	this->normals.clear();
+	this->normals.resize(this->vertices.size(), glm::vec3(0.0f, 0.0f, 0.0f));
+
+	for (size_t i = 0; i < vertexIndices.size(); i += 3)
+	{
+		glm::vec3 v1 = this->vertices[this->vertexIndices[i]];
+		glm::vec3 v2 = this->vertices[this->vertexIndices[i + 1]];
+		glm::vec3 v3 = this->vertices[this->vertexIndices[i + 2]];
+
+		glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
+
+		this->normals[this->vertexIndices[i]] += normal;
+		this->normals[this->vertexIndices[i + 1]] += normal;
+		this->normals[this->vertexIndices[i + 2]] += normal;
+	}
+
+	for (size_t i = 0; i < this->normals.size(); i++)
+		this->normals[i] = glm::normalize(this->normals[i]);
+
+	std::cout << "Number of vertices: " << this->vertices.size() << std::endl;
+	std::cout << "Number of faces: " << this->vertexIndices.size() / 3 << std::endl;
+	std::cout << "Number of normals: " << this->normals.size() << std::endl;
+
 	glGenVertexArrays(1, &this->VAO);
 	glGenBuffers(1, &this->VBO);
 	glGenBuffers(1, &this->EBO);
+	glGenBuffers(1, &this->normalVBO);
 
 	glBindVertexArray(this->VAO);
 
@@ -306,6 +344,13 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
+	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(glm::vec3), &this->normals[0], GL_STATIC_DRAW);
+	glBindVertexArray(this->VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1); 
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
