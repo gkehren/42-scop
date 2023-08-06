@@ -54,6 +54,10 @@ class Scop
 		glm::vec3 lightColor;
 		glm::vec3 objectColor;
 
+		float movementSpeed;
+		float rotationSpeed;
+		glm::vec3 objectPosition;
+
 		unsigned int VAO;
 		unsigned int VBO;
 		unsigned int EBO;
@@ -69,6 +73,7 @@ class Scop
 		std::vector<glm::vec2> textures;
 
 		void	cameraMovement();
+		void	objectMovement();
 		void	updateUI();
 		void	loadObjFile(std::string filePathName);
 };

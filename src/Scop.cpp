@@ -141,6 +141,10 @@ Scop::Scop()
 	this->lightPos = glm::vec3(0.0f, 10.0f, 0.0f);
 	this->objectColor = glm::vec3(1.0f, 0.5f, 0.31f);
 
+	this->movementSpeed = 0.05f;
+	this->rotationSpeed = 0.5f;
+	this->objectPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+
 	this->loadObjFile("/home/gkehren/Documents/scop/ressources/42.obj");
 }
 
@@ -164,14 +168,23 @@ void	Scop::run()
 	{
 		glfwPollEvents();
 
+		float currentFrame = glfwGetTime();
+		this->deltaTime = currentFrame - this->lastFrame;
+		this->lastFrame = currentFrame;
+		this->totalTime += this->deltaTime;
+		this->frames++;
+
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
 		this->cameraMovement();
+		this->objectMovement();
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		this->model = glm::rotate(this->model, rotationSpeed * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
 
 		glUseProgram(this->shaderProgram);
 		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(this->model));
@@ -250,14 +263,35 @@ void	Scop::cameraMovement()
 	this->view = glm::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
 }
 
+void	Scop::objectMovement()
+{
+	glm::mat3 rotationMatrix = glm::mat3(this->model);
+	glm::mat3 invRotationMatrix = glm::transpose(rotationMatrix);
+
+	glm::vec3 translationDelta(0.0f);
+
+	if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
+		translationDelta += movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(0.0f, 0.0f, -1.0f));
+	if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
+		translationDelta -= movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(0.0f, 0.0f, -1.0f));
+	if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
+		translationDelta -= movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(1.0f, 0.0f, 0.0f));
+	if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
+		translationDelta += movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(1.0f, 0.0f, 0.0f));
+	if (glfwGetKey(this->window, GLFW_KEY_E) == GLFW_PRESS)
+		translationDelta += movementSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
+	if (glfwGetKey(this->window, GLFW_KEY_Q) == GLFW_PRESS)
+		translationDelta -= movementSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
+	if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		translationDelta = -objectPosition;
+
+	objectPosition += translationDelta;
+
+	this->model = glm::translate(glm::mat4(1.0f), objectPosition) * glm::mat4(rotationMatrix);
+}
+
 void	Scop::updateUI()
 {
-	float currentFrame = glfwGetTime();
-	this->deltaTime = currentFrame - this->lastFrame;
-	this->lastFrame = currentFrame;
-	this->totalTime += this->deltaTime;
-	this->frames++;
-
 	if (this->totalTime >= this->updateInterval)
 	{
 		this->fps = static_cast<float>(this->frames) / this->totalTime;
@@ -266,12 +300,16 @@ void	Scop::updateUI()
 	}
 	ImGui::Begin("scop");
 	ImGui::Text("FPS : %.1f", this->fps);
+	ImGui::Text("Model position : (%.1f, %.1f, %.1f)", this->objectPosition.x, this->objectPosition.y, this->objectPosition.z);
 	ImGui::Text("Camera position : (%.1f, %.1f, %.1f)", this->cameraPos.x, this->cameraPos.y, this->cameraPos.z);
 	ImGui::Text("Camera front : (%.1f, %.1f, %.1f)", this->cameraFront.x, this->cameraFront.y, this->cameraFront.z);
 	ImGui::Text("Camera target : (%.1f, %.1f, %.1f)", this->cameraTarget.x, this->cameraTarget.y, this->cameraTarget.z);
 	ImGui::Text("Camera up : (%.1f, %.1f, %.1f)", this->cameraUp.x, this->cameraUp.y, this->cameraUp.z);
 	ImGui::Text("Yaw : %.1f", this->yaw);
 	ImGui::Text("Pitch : %.1f", this->pitch);
+	ImGui::SliderFloat("Rotation Speed", &this->rotationSpeed, 0.0f, 2.0f);
+	if (ImGui::Button("Reset object"))
+		this->objectPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 	if (ImGui::Button("Reset camera"))
 	{
 		this->yaw = -90.0f;
