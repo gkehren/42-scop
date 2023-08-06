@@ -7,6 +7,7 @@ const char* vertexShaderSource = R"(
 
 	out vec3 FragPos;
 	out vec3 Normal;
+	out vec3 ViewDir;
 
 	uniform mat4 model;
 	uniform mat4 view;
@@ -14,18 +15,41 @@ const char* vertexShaderSource = R"(
 
 	void main() {
 		gl_Position = projection * view * model * vec4(aPos, 1.0);
+		
 		FragPos = vec3(model * vec4(aPos, 1.0));
 		Normal = mat3(transpose(inverse(model))) * aNormal;
+
+		// Calcul de la direction de la vue (de la caméra) dans l'espace objet
+		ViewDir = vec3(inverse(view) * vec4(0.0, 0.0, 0.0, 1.0) - model * vec4(aPos, 1.0));
 	}
 )";
 
 const char* fragmentShaderSource = R"(
 	#version 330 core
+	in vec3 FragPos;
+	in vec3 Normal;
+
 	out vec4 FragColor;
 
+	uniform vec3 lightPos;
+	uniform vec3 viewPos;
+	uniform vec3 lightColor;
+	uniform vec3 objectColor;
+
 	void main() {
-        float gray = (float((gl_PrimitiveID) % 5) / 10.0) * 0.4 + 0.02;
-		FragColor = vec4(gray, gray, gray, 1.0);
+		vec3 ambient = 0.1 * lightColor;
+		vec3 norm = normalize(Normal);
+		vec3 lightDir = normalize(lightPos - FragPos);
+		float diff = max(dot(norm, lightDir), 0.0);
+		vec3 diffuse = diff * lightColor;
+
+		vec3 viewDir = normalize(viewPos - FragPos);
+		vec3 reflectDir = reflect(-lightDir, norm);
+		float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+		vec3 specular = spec * lightColor;
+
+		vec3 result = (ambient + diffuse + specular) * objectColor;
+		FragColor = vec4(result, 1.0);
 	}
 )";
 
@@ -85,7 +109,6 @@ Scop::Scop()
 	ImGui_ImplOpenGL3_Init();
 
 	glEnable(GL_DEPTH_TEST);
-	// glEnable(GL_CULL_FACE);
 
 	this->deltaTime = 0.0f;
 	this->lastFrame = 0.0f;
@@ -113,6 +136,10 @@ Scop::Scop()
 	this->view = glm::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
 	this->projection = glm::perspective(glm::radians(45.0f), (float)this->windowWidth / (float)this->windowHeight, 0.1f, 100.0f);
 	this->model = glm::mat4(1.0f);
+
+	this->lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+	this->lightPos = glm::vec3(0.0f, 10.0f, 0.0f);
+	this->objectColor = glm::vec3(1.0f, 0.5f, 0.31f);
 
 	this->loadObjFile("/home/gkehren/Documents/scop/ressources/42.obj");
 }
@@ -150,6 +177,9 @@ void	Scop::run()
 		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(this->model));
 		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(this->view));
 		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(this->projection));
+		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightColor"), 1, glm::value_ptr(this->lightColor));
+		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightPos"), 1, glm::value_ptr(this->lightPos));
+		glUniform3fv(glGetUniformLocation(this->shaderProgram, "objectColor"), 1, glm::value_ptr(this->objectColor));
 
 		glBindVertexArray(this->VAO);
 		glEnableVertexAttribArray(1);
@@ -297,12 +327,28 @@ void	Scop::loadObjFile(std::string filePathName)
 		}
 		else if (type == "f")
 		{
-			unsigned int vertexIndex1, vertexIndex2, vertexIndex3;
-			iss >> vertexIndex1 >> vertexIndex2 >> vertexIndex3;
-			std::cout << "Face: " << vertexIndex1 << " " << vertexIndex2 << " " << vertexIndex3 << std::endl;
-			vertexIndices.push_back(vertexIndex1 - 1);
-			vertexIndices.push_back(vertexIndex2 - 1);
-			vertexIndices.push_back(vertexIndex3 - 1);
+			std::vector<unsigned int> faceIndices;
+			unsigned int index;
+
+			while (iss >> index)
+				faceIndices.push_back(index - 1);
+
+			if (faceIndices.size() == 3)
+			{
+				vertexIndices.push_back(faceIndices[0]);
+				vertexIndices.push_back(faceIndices[1]);
+				vertexIndices.push_back(faceIndices[2]);
+			}
+			else if (faceIndices.size() == 4)
+			{
+				vertexIndices.push_back(faceIndices[0]);
+				vertexIndices.push_back(faceIndices[1]);
+				vertexIndices.push_back(faceIndices[2]);
+
+				vertexIndices.push_back(faceIndices[0]);
+				vertexIndices.push_back(faceIndices[2]);
+				vertexIndices.push_back(faceIndices[3]);
+			}
 		}
 	}
 
@@ -324,10 +370,6 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	for (size_t i = 0; i < this->normals.size(); i++)
 		this->normals[i] = glm::normalize(this->normals[i]);
-
-	std::cout << "Number of vertices: " << this->vertices.size() << std::endl;
-	std::cout << "Number of faces: " << this->vertexIndices.size() / 3 << std::endl;
-	std::cout << "Number of normals: " << this->normals.size() << std::endl;
 
 	glGenVertexArrays(1, &this->VAO);
 	glGenBuffers(1, &this->VBO);

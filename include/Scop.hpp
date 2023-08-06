@@ -50,6 +50,9 @@ class Scop
 		glm::mat4 view;
 		glm::mat4 projection;
 		glm::mat4 model;
+		glm::vec3 lightPos;
+		glm::vec3 lightColor;
+		glm::vec3 objectColor;
 
 		unsigned int VAO;
 		unsigned int VBO;
