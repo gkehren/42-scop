@@ -34,7 +34,7 @@ class Scop
 		float totalTime;
 		float updateInterval;
 		int frames;
-		
+
 		double lastX;
 		double lastY;
 		bool firstMouse;
@@ -62,6 +62,14 @@ class Scop
 		unsigned int VBO;
 		unsigned int EBO;
 		GLuint normalVBO;
+		GLuint textureVBO;
+
+		// Texture
+		unsigned char *imageData;
+		int imageWidth;
+		int imageHeight;
+		int imageChannels;
+		GLuint textureID;
 
 		unsigned int vertexShader;
 		unsigned int fragmentShader;
@@ -76,4 +84,5 @@ class Scop
 		void	objectMovement();
 		void	updateUI();
 		void	loadObjFile(std::string filePathName);
+		void	loadbmpFile(std::string filePathName);
 };

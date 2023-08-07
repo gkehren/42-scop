@@ -1,31 +1,35 @@
 #include "../include/Scop.hpp"
+#define STB_IMAGE_IMPLEMENTATION
+#include "../imgui/stb_image.h"
 
 const char* vertexShaderSource = R"(
 	#version 330 core
-	layout (location = 0) in vec3 aPos;
-	layout (location = 1) in vec3 aNormal;
 
+	layout(location = 0) in vec3 inPosition;
+	layout(location = 1) in vec2 inTexCoord;
+	layout(location = 2) in vec3 inNormal;
+
+	out vec2 TexCoord;
 	out vec3 FragPos;
 	out vec3 Normal;
-	out vec3 ViewDir;
 
 	uniform mat4 model;
 	uniform mat4 view;
 	uniform mat4 projection;
 
 	void main() {
-		gl_Position = projection * view * model * vec4(aPos, 1.0);
-		
-		FragPos = vec3(model * vec4(aPos, 1.0));
-		Normal = mat3(transpose(inverse(model))) * aNormal;
+		TexCoord = inTexCoord;
+		FragPos = vec3(model * vec4(inPosition, 1.0));
+		Normal = mat3(transpose(inverse(model))) * inNormal;
 
-		// Calcul de la direction de la vue (de la caméra) dans l'espace objet
-		ViewDir = vec3(inverse(view) * vec4(0.0, 0.0, 0.0, 1.0) - model * vec4(aPos, 1.0));
+		gl_Position = projection * view * model * vec4(inPosition, 1.0);
 	}
 )";
 
 const char* fragmentShaderSource = R"(
 	#version 330 core
+
+	in vec2 TexCoord;
 	in vec3 FragPos;
 	in vec3 Normal;
 
@@ -36,7 +40,10 @@ const char* fragmentShaderSource = R"(
 	uniform vec3 lightColor;
 	uniform vec3 objectColor;
 
+	uniform sampler2D textureSampler; // Texture sampler
+
 	void main() {
+		// Calculate lighting
 		vec3 ambient = 0.1 * lightColor;
 		vec3 norm = normalize(Normal);
 		vec3 lightDir = normalize(lightPos - FragPos);
@@ -49,7 +56,10 @@ const char* fragmentShaderSource = R"(
 		vec3 specular = spec * lightColor;
 
 		vec3 result = (ambient + diffuse + specular) * objectColor;
-		FragColor = vec4(result, 1.0);
+
+		// Apply texture
+		vec3 textureColor = texture(textureSampler, TexCoord).xyz;
+		FragColor = vec4(result * textureColor, 1.0);
 	}
 )";
 
@@ -85,7 +95,7 @@ Scop::Scop()
 	this->windowWidth = 1920;
 	this->windowHeight = 1080;
 
-	this->window = glfwCreateWindow(this->windowWidth, this->windowHeight, "scope", nullptr, nullptr);
+	this->window = glfwCreateWindow(this->windowWidth, this->windowHeight, "scop", nullptr, nullptr);
 	if (!this->window)
 	{
 		std::cerr << "Error while creating GLFW window" << std::endl;
@@ -128,7 +138,7 @@ Scop::Scop()
 	this->sensitivity = 0.005f;
 	this->fps = 0.0f;
 
-	this->cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);  
+	this->cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 	this->cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 	this->cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
 	this->cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -145,7 +155,8 @@ Scop::Scop()
 	this->rotationSpeed = 0.5f;
 	this->objectPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 
-	this->loadObjFile("/home/gkehren/Documents/scop/ressources/42.obj");
+	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
+	this->loadbmpFile("/home/gkehren/42-scop/ressources/chaton.bmp");
 }
 
 Scop::~Scop()
@@ -193,6 +204,10 @@ void	Scop::run()
 		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightColor"), 1, glm::value_ptr(this->lightColor));
 		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightPos"), 1, glm::value_ptr(this->lightPos));
 		glUniform3fv(glGetUniformLocation(this->shaderProgram, "objectColor"), 1, glm::value_ptr(this->objectColor));
+		glUniform1i(glGetUniformLocation(this->shaderProgram, "textureSampler"), 0);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureID);
 
 		glBindVertexArray(this->VAO);
 		glEnableVertexAttribArray(1);
@@ -248,10 +263,10 @@ void	Scop::cameraMovement()
 
 	if (this->pitch > 89.0f)
 		this->pitch = 89.0f;
-	
+
 	if (this->pitch < -89.0f)
 		this->pitch = -89.0f;
-	
+
 	glm::vec3 front;
 	front.x = cos(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
 	front.y = sin(glm::radians(this->pitch));
@@ -336,6 +351,28 @@ void	Scop::updateUI()
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+void	Scop::loadbmpFile(std::string filePathName)
+{
+	this->imageData = stbi_load(filePathName.c_str(), &this->imageWidth, &this->imageHeight, &this->imageChannels, 0);
+	if (!this->imageData)
+	{
+		std::cout << "Error: could not load texture" << std::endl;
+		return ;
+	}
+
+	glGenTextures(1, &this->textureID);
+	glBindTexture(GL_TEXTURE_2D, this->textureID);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, this->imageWidth, this->imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, this->imageData);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	stbi_image_free(this->imageData);
+}
+
 void	Scop::loadObjFile(std::string filePathName)
 {
 	std::cout << "filePathName: " <<  filePathName << std::endl;
@@ -404,11 +441,24 @@ void	Scop::loadObjFile(std::string filePathName)
 				}
 			}
 
+			if (faceTextureIndices.empty())
+				for (size_t i = 0; i < faceVertexIndices.size(); ++i)
+					faceTextureIndices.push_back(0);
+
 			for (size_t i = 1; i < faceVertexIndices.size() - 1; ++i)
 			{
 				this->vertexIndices.push_back(faceVertexIndices[0]);
 				this->vertexIndices.push_back(faceVertexIndices[i]);
 				this->vertexIndices.push_back(faceVertexIndices[i + 1]);
+			}
+
+			if (textures.empty())
+			{
+				for (unsigned int index : faceTextureIndices)
+				{
+					this->textures.push_back(glm::vec2(0.0f, 0.0f));
+					this->textures[index] = glm::vec2(0.0f, 0.0f);
+				}
 			}
 		}
 	}
@@ -438,25 +488,29 @@ void	Scop::loadObjFile(std::string filePathName)
 	glGenBuffers(1, &this->VBO);
 	glGenBuffers(1, &this->EBO);
 	glGenBuffers(1, &this->normalVBO);
+	glGenBuffers(1, &this->textureVBO);
 
 	glBindVertexArray(this->VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-	glBufferData(GL_ARRAY_BUFFER, this->vertices.size() * sizeof(glm::vec3), &this->vertices[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertexIndices.size() * sizeof(unsigned int), &vertexIndices[0], GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
+	glBufferData(GL_ARRAY_BUFFER, this->vertices.size() * sizeof(glm::vec3), &this->vertices[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, this->textureVBO);
+	glBufferData(GL_ARRAY_BUFFER, this->textures.size() * sizeof(glm::vec2), &this->textures[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+
+	glEnableVertexAttribArray(2);
 	glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
 	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(glm::vec3), &this->normals[0], GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(1); 
-
-	glBindVertexArray(0);
+	//glBindVertexArray(0);
 
 	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	this->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);

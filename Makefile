@@ -6,7 +6,7 @@
 #    By: gkehren <gkehren@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/07/30 22:16:55 by gkehren           #+#    #+#              #
-#    Updated: 2023/08/05 19:11:37 by gkehren          ###   ########.fr        #
+#    Updated: 2023/08/07 19:29:09 by gkehren          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,7 +18,7 @@ CC:=c++
 SRCPATH:=src/
 INCLUDES:= -I includes/ -I imgui/
 CCHPATH:=obj/
-CFLAGS:=-lGLEW -lGL -lglfw
+CFLAGS:=
 # ==================
 
 # ----- Colors -----
@@ -42,7 +42,7 @@ all: ${NAME}
 
 ${NAME}: ${OBJ}
 	@echo ${CYAN} " - Compiling $@" $(RED)
-	@${CC} ${CFLAGS} ${SRC} -o ${NAME}
+	@${CC} ${CFLAGS} ${SRC} -o ${NAME} -lGLEW -lGL -lglfw
 	@echo $(GREEN) " - OK" $(EOC)
 
 ${CCHPATH}%.o: ${SRCPATH}%.cpp
