@@ -3,7 +3,7 @@
 #include "../imgui/stb_image.h"
 
 const char* vertexShaderSource = R"(
-	#version 330 core
+	#version 420 core
 
 	layout(location = 0) in vec3 inPosition;
 	layout(location = 1) in vec2 inTexCoord;
@@ -27,7 +27,7 @@ const char* vertexShaderSource = R"(
 )";
 
 const char* fragmentShaderSource = R"(
-	#version 330 core
+	#version 420 core
 
 	in vec2 TexCoord;
 	in vec3 FragPos;
