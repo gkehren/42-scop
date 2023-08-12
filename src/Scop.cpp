@@ -101,10 +101,10 @@ Scop::Scop()
 
 	glfwSetErrorCallback(errorCallback);
 
-	// Use OpenGL 3.3 Core Profile
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+	// Use OpenGL 4.2 Core Profile
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create window
 	this->windowWidth = 1920;
@@ -195,8 +195,6 @@ Scop::~Scop()
 
 void	Scop::run()
 {
-	//glm::vec3 initialModelPosition  = calculateModelCenterOffset();
-
 	while (!glfwWindowShouldClose(this->window))
 	{
 		glfwPollEvents();
@@ -213,16 +211,6 @@ void	Scop::run()
 
 		this->cameraMovement();
 		this->objectMovement();
-
-		//glm::vec3 currentModelPosition = glm::vec3(this->model[3]);
-
-		//this->objectPosition = initialModelPosition;
-		//this->model = glm::rotate(this->model, rotationSpeed * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
-		//this->objectPosition = currentModelPosition;
-
-		//this->model = glm::translate(glm::mat4(1.0f), initialModelPosition);
-		//this->model = glm::rotate(this->model, rotationSpeed * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
-		//this->model[3] = glm::vec4(currentModelPosition, 1.0f);
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
