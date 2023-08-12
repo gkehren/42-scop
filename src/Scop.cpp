@@ -41,25 +41,40 @@ const char* fragmentShaderSource = R"(
 	uniform vec3 objectColor;
 
 	uniform sampler2D textureSampler; // Texture sampler
+	uniform bool showTextures;
+	uniform bool showGradient;
+	uniform bool showLight;
 
 	void main() {
-		// Calculate lighting
-		vec3 ambient = 0.1 * lightColor;
-		vec3 norm = normalize(Normal);
-		vec3 lightDir = normalize(lightPos - FragPos);
-		float diff = max(dot(norm, lightDir), 0.0);
-		vec3 diffuse = diff * lightColor;
+		vec3 result = vec3(0.0);
 
-		vec3 viewDir = normalize(viewPos - FragPos);
-		vec3 reflectDir = reflect(-lightDir, norm);
-		float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-		vec3 specular = spec * lightColor;
+		if (showTextures) {
+			vec3 textureColor = texture(textureSampler, TexCoord).xyz;
+			result = textureColor;
+		} else if (showGradient) {
+			vec3 gradientColor = mix(vec3(TexCoord.y, TexCoord.x, 0.5), objectColor, 0.5);
+			result = gradientColor;
+		} else {
+			result = objectColor;
+		}
 
-		vec3 result = (ambient + diffuse + specular) * objectColor;
+		if (showLight) {
+			// Calculate lighting
+			vec3 ambient = 0.1 * lightColor;
+			vec3 norm = normalize(Normal);
+			vec3 lightDir = normalize(lightPos - FragPos);
+			float diff = max(dot(norm, lightDir), 0.0);
+			vec3 diffuse = diff * lightColor;
 
-		// Apply texture
-		vec3 textureColor = texture(textureSampler, TexCoord).xyz;
-		FragColor = vec4(result * textureColor, 1.0);
+			vec3 viewDir = normalize(viewPos - FragPos);
+			vec3 reflectDir = reflect(-lightDir, norm);
+			float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+			vec3 specular = spec * lightColor;
+
+			result = result * (ambient + diffuse + specular);
+		}
+
+		FragColor = vec4(result, 1.0);
 	}
 )";
 
@@ -137,6 +152,10 @@ Scop::Scop()
 	this->distanceFromCube = 8.0f;
 	this->sensitivity = 0.005f;
 	this->fps = 0.0f;
+	this->showTextures = false;
+	this->showWireframe = false;
+	this->showGradient = false;
+	this->showLight = true;
 
 	this->cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 	this->cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -153,6 +172,7 @@ Scop::Scop()
 
 	this->movementSpeed = 0.05f;
 	this->rotationSpeed = 0.5f;
+	this->rotationAngle = 0.0f;
 	this->objectPosition = glm::vec3(0.0f, 0.0f, 0.0f);
 
 	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
@@ -175,6 +195,8 @@ Scop::~Scop()
 
 void	Scop::run()
 {
+	//glm::vec3 initialModelPosition  = calculateModelCenterOffset();
+
 	while (!glfwWindowShouldClose(this->window))
 	{
 		glfwPollEvents();
@@ -192,11 +214,18 @@ void	Scop::run()
 		this->cameraMovement();
 		this->objectMovement();
 
+		//glm::vec3 currentModelPosition = glm::vec3(this->model[3]);
+
+		//this->objectPosition = initialModelPosition;
+		//this->model = glm::rotate(this->model, rotationSpeed * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
+		//this->objectPosition = currentModelPosition;
+
+		//this->model = glm::translate(glm::mat4(1.0f), initialModelPosition);
+		//this->model = glm::rotate(this->model, rotationSpeed * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
+		//this->model[3] = glm::vec4(currentModelPosition, 1.0f);
+
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		this->model = glm::rotate(this->model, rotationSpeed * deltaTime, glm::vec3(0.0f, 1.0f, 0.0f));
-
 		glUseProgram(this->shaderProgram);
 		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(this->model));
 		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(this->view));
@@ -205,9 +234,17 @@ void	Scop::run()
 		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightPos"), 1, glm::value_ptr(this->lightPos));
 		glUniform3fv(glGetUniformLocation(this->shaderProgram, "objectColor"), 1, glm::value_ptr(this->objectColor));
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "textureSampler"), 0);
+		glUniform1i(glGetUniformLocation(this->shaderProgram, "showTextures"), this->showTextures);
+		glUniform1i(glGetUniformLocation(this->shaderProgram, "showGradient"), this->showGradient);
+		glUniform1i(glGetUniformLocation(this->shaderProgram, "showLight"), this->showLight);
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureID);
+
+		if (showWireframe)
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		else
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		glBindVertexArray(this->VAO);
 		glEnableVertexAttribArray(1);
@@ -278,10 +315,10 @@ void	Scop::cameraMovement()
 	this->view = glm::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
 }
 
-void	Scop::objectMovement()
+void Scop::objectMovement()
 {
-	glm::mat3 rotationMatrix = glm::mat3(this->model);
-	glm::mat3 invRotationMatrix = glm::transpose(rotationMatrix);
+	glm::mat3 rotationMatrix3 = glm::mat3(this->model);
+	glm::mat3 invRotationMatrix = glm::transpose(rotationMatrix3);
 
 	glm::vec3 translationDelta(0.0f);
 
@@ -293,16 +330,20 @@ void	Scop::objectMovement()
 		translationDelta -= movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(1.0f, 0.0f, 0.0f));
 	if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
 		translationDelta += movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(1.0f, 0.0f, 0.0f));
-	if (glfwGetKey(this->window, GLFW_KEY_E) == GLFW_PRESS)
-		translationDelta += movementSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
 	if (glfwGetKey(this->window, GLFW_KEY_Q) == GLFW_PRESS)
+		translationDelta += movementSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
+	if (glfwGetKey(this->window, GLFW_KEY_E) == GLFW_PRESS)
 		translationDelta -= movementSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
 	if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
 		translationDelta = -objectPosition;
 
-	objectPosition += translationDelta;
+	this->objectPosition += translationDelta;
+	this->rotationAngle = this->rotationSpeed * this->deltaTime;
 
-	this->model = glm::translate(glm::mat4(1.0f), objectPosition) * glm::mat4(rotationMatrix);
+	glm::mat4 rotationMatrix4 = glm::rotate(glm::mat4(1.0f), this->rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::vec3 modelCenterOffset = calculateModelCenterOffset();
+
+	this->model = glm::translate(glm::mat4(1.0f), this->objectPosition - modelCenterOffset) * glm::mat4(rotationMatrix3) * rotationMatrix4 * glm::translate(glm::mat4(1.0f), modelCenterOffset);
 }
 
 void	Scop::updateUI()
@@ -322,15 +363,6 @@ void	Scop::updateUI()
 	ImGui::Text("Camera up : (%.1f, %.1f, %.1f)", this->cameraUp.x, this->cameraUp.y, this->cameraUp.z);
 	ImGui::Text("Yaw : %.1f", this->yaw);
 	ImGui::Text("Pitch : %.1f", this->pitch);
-	ImGui::SliderFloat("Rotation Speed", &this->rotationSpeed, 0.0f, 2.0f);
-	if (ImGui::Button("Reset object"))
-		this->objectPosition = glm::vec3(0.0f, 0.0f, 0.0f);
-	if (ImGui::Button("Reset camera"))
-	{
-		this->yaw = -90.0f;
-		this->pitch = 0.0f;
-		this->distanceFromCube = 8.0f;
-	}
 	// File Dialog
 	if (ImGui::Button("Open File"))
 		ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj", ".");
@@ -344,6 +376,21 @@ void	Scop::updateUI()
 		}
 		ImGuiFileDialog::Instance()->Close();
 	}
+	if (ImGui::Button("Reset object"))
+		this->objectPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+	if (ImGui::Button("Reset camera"))
+	{
+		this->yaw = -90.0f;
+		this->pitch = 0.0f;
+		this->distanceFromCube = 8.0f;
+	}
+	ImGui::SliderFloat("Rotation Speed", &this->rotationSpeed, 0.0f, 2.0f);
+	ImGui::Checkbox("Wireframe", &this->showWireframe);
+	ImGui::Checkbox("Texture", &this->showTextures);
+	ImGui::Checkbox("Gradient", &this->showGradient);
+	ImGui::Checkbox("Light", &this->showLight);
+	ImGui::ColorEdit3("Object Color", glm::value_ptr(this->objectColor));
+	ImGui::ColorEdit3("Light Color", glm::value_ptr(this->lightColor));
 
 	ImGui::End();
 
@@ -375,7 +422,6 @@ void	Scop::loadbmpFile(std::string filePathName)
 
 void	Scop::loadObjFile(std::string filePathName)
 {
-	std::cout << "filePathName: " <<  filePathName << std::endl;
 	std::ifstream objFile(filePathName);
 
 	if (!objFile.is_open())
@@ -510,8 +556,6 @@ void	Scop::loadObjFile(std::string filePathName)
 	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(glm::vec3), &this->normals[0], GL_STATIC_DRAW);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
-	//glBindVertexArray(0);
-
 	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	this->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
@@ -528,4 +572,20 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	glDeleteShader(this->vertexShader);
 	glDeleteShader(this->fragmentShader);
+}
+
+glm::vec3 Scop::calculateModelCenterOffset()
+{
+	glm::vec3 minCoords = glm::vec3(std::numeric_limits<float>::max());
+	glm::vec3 maxCoords = glm::vec3(std::numeric_limits<float>::lowest());
+
+	for (const glm::vec3& vertex : vertices)
+	{
+		minCoords = glm::min(minCoords, vertex);
+		maxCoords = glm::max(maxCoords, vertex);
+	}
+
+	glm::vec3 center = (minCoords + maxCoords) * 0.5f;
+
+	return -center;
 }

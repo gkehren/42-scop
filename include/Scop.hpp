@@ -56,6 +56,7 @@ class Scop
 
 		float movementSpeed;
 		float rotationSpeed;
+		float rotationAngle;
 		glm::vec3 objectPosition;
 
 		unsigned int VAO;
@@ -63,6 +64,11 @@ class Scop
 		unsigned int EBO;
 		GLuint normalVBO;
 		GLuint textureVBO;
+
+		bool	showTextures;
+		bool	showWireframe;
+		bool	showGradient;
+		bool	showLight;
 
 		// Texture
 		unsigned char *imageData;
@@ -85,4 +91,5 @@ class Scop
 		void	updateUI();
 		void	loadObjFile(std::string filePathName);
 		void	loadbmpFile(std::string filePathName);
+		glm::vec3	calculateModelCenterOffset();
 };
