@@ -11,6 +11,25 @@
 #include "../imgui/imgui_impl_opengl3.h"
 #include "../imgui/ImGuiFileDialog.h"
 #include <fstream>
+#include <cmath>
+
+struct Vertex {
+	float x, y, z;
+};
+
+struct Normal {
+	float nx, ny, nz;
+};
+
+struct TextureCoord {
+	float u, v;
+};
+
+struct Face {
+	int vertexIndex[4];
+	int normalIndex[4];
+	int textureCoordIndex[4];
+};
 
 class Scop
 {
@@ -54,16 +73,14 @@ class Scop
 		glm::vec3 lightColor;
 		glm::vec3 objectColor;
 
-		float movementSpeed;
-		float rotationSpeed;
-		float rotationAngle;
-		glm::vec3 objectPosition;
+		float		movementSpeed;
+		float		rotationSpeed;
+		float		rotationAngle;
+		glm::vec3	objectPosition;
 
-		unsigned int VAO;
-		unsigned int VBO;
-		unsigned int EBO;
-		GLuint normalVBO;
-		GLuint textureVBO;
+		GLuint	VAO;
+		GLuint	VBO;
+		GLuint	EBO;
 
 		bool	showTextures;
 		bool	showWireframe;
@@ -71,25 +88,28 @@ class Scop
 		bool	showLight;
 
 		// Texture
-		unsigned char *imageData;
-		int imageWidth;
-		int imageHeight;
-		int imageChannels;
-		GLuint textureID;
+		unsigned char	*imageData;
+		int				imageWidth;
+		int				imageHeight;
+		int				imageChannels;
+		GLuint			textureID;
 
-		unsigned int vertexShader;
-		unsigned int fragmentShader;
-		unsigned int shaderProgram;
+		GLuint	vertexShader;
+		GLuint	fragmentShader;
+		GLuint	shaderProgram;
+		GLuint	textureVBO;
+		GLuint	normalVBO;
 
-		std::vector<glm::vec3> vertices;
-		std::vector<unsigned int> vertexIndices;
-		std::vector<glm::vec3> normals;
-		std::vector<glm::vec2> textures;
+		std::vector<Vertex>			vertices;
+		std::vector<Normal>			normals;
+		std::vector<TextureCoord>	textureCoords;
+		std::vector<Face>			faces;
+		std::vector<unsigned int>	indices;
 
-		void	cameraMovement();
-		void	objectMovement();
-		void	updateUI();
-		void	loadObjFile(std::string filePathName);
-		void	loadbmpFile(std::string filePathName);
+		void		cameraMovement();
+		void		objectMovement();
+		void		updateUI();
+		void		loadObjFile(std::string filePathName);
+		void		loadbmpFile(std::string filePathName);
 		glm::vec3	calculateModelCenterOffset();
 };

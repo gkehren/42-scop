@@ -18,11 +18,10 @@ const char* vertexShaderSource = R"(
 	uniform mat4 projection;
 
 	void main() {
+		gl_Position = projection * view * model * vec4(inPosition, 1.0);
 		TexCoord = inTexCoord;
 		FragPos = vec3(model * vec4(inPosition, 1.0));
 		Normal = mat3(transpose(inverse(model))) * inNormal;
-
-		gl_Position = projection * view * model * vec4(inPosition, 1.0);
 	}
 )";
 
@@ -177,6 +176,48 @@ Scop::Scop()
 
 	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
 	this->loadbmpFile("/home/gkehren/42-scop/ressources/chaton.bmp");
+
+	// LOAD SHADER
+	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+	glCompileShader(vertexShader);
+
+	GLint success;
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[512];
+		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
+		std::cout << "Error compiling vertex shader:\n" << infoLog << std::endl;
+	}
+
+	this->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+	glCompileShader(fragmentShader);
+
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[512];
+		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
+		std::cout << "Error compiling fragment shader:\n" << infoLog << std::endl;
+	}
+
+	this->shaderProgram = glCreateProgram();
+	glAttachShader(this->shaderProgram, this->vertexShader);
+	glAttachShader(this->shaderProgram, this->fragmentShader);
+	glLinkProgram(this->shaderProgram);
+
+	glGetProgramiv(this->shaderProgram, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[512];
+		glGetProgramInfoLog(this->shaderProgram, 512, nullptr, infoLog);
+		std::cout << "Error linking shader program:\n" << infoLog << std::endl;
+	}
+
+	glDeleteShader(this->vertexShader);
+	glDeleteShader(this->fragmentShader);
 }
 
 Scop::~Scop()
@@ -221,13 +262,12 @@ void	Scop::run()
 		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightColor"), 1, glm::value_ptr(this->lightColor));
 		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightPos"), 1, glm::value_ptr(this->lightPos));
 		glUniform3fv(glGetUniformLocation(this->shaderProgram, "objectColor"), 1, glm::value_ptr(this->objectColor));
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureID);
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "textureSampler"), 0);
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "showTextures"), this->showTextures);
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "showGradient"), this->showGradient);
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "showLight"), this->showLight);
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textureID);
 
 		if (showWireframe)
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -235,12 +275,9 @@ void	Scop::run()
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 		glBindVertexArray(this->VAO);
-		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-		glDrawElements(GL_TRIANGLES, this->vertexIndices.size(), GL_UNSIGNED_INT, 0);
-		glDisableVertexAttribArray(1);
+		glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+		glUseProgram(0);
 
 		this->updateUI();
 
@@ -398,12 +435,13 @@ void	Scop::loadbmpFile(std::string filePathName)
 	glGenTextures(1, &this->textureID);
 	glBindTexture(GL_TEXTURE_2D, this->textureID);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, this->imageWidth, this->imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, this->imageData);
-
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, this->imageWidth, this->imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, this->imageData);
+	glGenerateMipmap(GL_TEXTURE_2D);
 
 	stbi_image_free(this->imageData);
 }
@@ -418,105 +456,120 @@ void	Scop::loadObjFile(std::string filePathName)
 		return ;
 	}
 
+	std::cout << "Loading file: " << filePathName << std::endl;
+
 	this->vertices.clear();
-	this->vertexIndices.clear();
 	this->normals.clear();
-	this->textures.clear();
+	this->textureCoords.clear();
+	this->faces.clear();
+	this->indices.clear();
+	glDeleteVertexArrays(1, &this->VAO);
+	glDeleteBuffers(1, &this->VBO);
+	glDeleteBuffers(1, &this->EBO);
+	glDeleteBuffers(1, &this->textureVBO);
+	glDeleteBuffers(1, &this->normalVBO);
 
 	std::string line;
 	while (std::getline(objFile, line))
 	{
 		std::istringstream iss(line);
-		std::string type;
-		iss >> type;
-		if (type == "v")
+		std::string lineType;
+		iss >> lineType;
+		if (lineType == "v")
 		{
-			glm::vec3 vertex;
+			Vertex vertex;
 			iss >> vertex.x >> vertex.y >> vertex.z;
 			this->vertices.push_back(vertex);
 		}
-		else if (type == "vn")
+		else if (lineType == "vn")
 		{
-			glm::vec3 normal;
-			iss >> normal.x >> normal.y >> normal.z;
+			Normal normal;
+			iss >> normal.nx >> normal.ny >> normal.nz;
 			this->normals.push_back(normal);
 		}
-		else if (type == "vt")
+		else if (lineType == "vt")
 		{
-			glm::vec2 texture;
-			iss >> texture.x >> texture.y;
-			this->textures.push_back(texture);
+			TextureCoord textureCoord;
+			iss >> textureCoord.u >> textureCoord.v;
+			this->textureCoords.push_back(textureCoord);
 		}
-		else if (type == "f")
+		else if (lineType == "f")
 		{
-			std::vector<unsigned int> faceVertexIndices;
-			std::vector<unsigned int> faceTextureIndices;
-			std::vector<unsigned int> faceNormalIndices;
+			Face face;
+			char slash;
+			std::string token;
 
-			unsigned int index;
-			while (iss >> index)
+			for (int i = 0; i < 3; ++i)
 			{
-				faceVertexIndices.push_back(index - 1);
+				iss >> token;
 
-				if (iss.peek() == '/')
-				{
-					iss.ignore();
-					if (iss.peek() != '/')
-					{
-						iss >> index;
-						faceTextureIndices.push_back(index - 1);
-					}
-					if (iss.peek() == '/')
-					{
-						iss.ignore();
-						iss >> index;
-						faceNormalIndices.push_back(index - 1);
-					}
-				}
+				std::istringstream tokenStream(token);
+				std::string indexToken;
+
+				getline(tokenStream, indexToken, '/');
+				face.vertexIndex[i] = std::stoi(indexToken) - 1;
+
+				if (getline(tokenStream, indexToken, '/'))
+					face.textureCoordIndex[i] = std::stoi(indexToken) - 1;
+				else
+					face.textureCoordIndex[i] = -1;
+
+				if (getline(tokenStream, indexToken))
+					face.normalIndex[i] = std::stoi(indexToken) - 1;
+				else
+					face.normalIndex[i] = -1;
 			}
 
-			if (faceTextureIndices.empty())
-				for (size_t i = 0; i < faceVertexIndices.size(); ++i)
-					faceTextureIndices.push_back(0);
+			faces.push_back(face);
 
-			for (size_t i = 1; i < faceVertexIndices.size() - 1; ++i)
+			if (iss >> token)
 			{
-				this->vertexIndices.push_back(faceVertexIndices[0]);
-				this->vertexIndices.push_back(faceVertexIndices[i]);
-				this->vertexIndices.push_back(faceVertexIndices[i + 1]);
-			}
+				Face secondFace;
+				secondFace.vertexIndex[0] = face.vertexIndex[0];
+				secondFace.textureCoordIndex[0] = face.textureCoordIndex[0];
+				secondFace.normalIndex[0] = face.normalIndex[0];
 
-			if (textures.empty())
-			{
-				for (unsigned int index : faceTextureIndices)
-				{
-					this->textures.push_back(glm::vec2(0.0f, 0.0f));
-					this->textures[index] = glm::vec2(0.0f, 0.0f);
-				}
+				std::istringstream tokenStream(token);
+				std::string indexToken;
+
+				getline(tokenStream, indexToken, '/');
+				secondFace.vertexIndex[2] = std::stoi(indexToken) - 1;
+
+				if (getline(tokenStream, indexToken, '/'))
+					secondFace.textureCoordIndex[2] = std::stoi(indexToken) - 1;
+				else
+					secondFace.textureCoordIndex[2] = -1;
+
+				if (getline(tokenStream, indexToken))
+					secondFace.normalIndex[2] = std::stoi(indexToken) - 1;
+				else
+					secondFace.normalIndex[2] = -1;
+
+				secondFace.vertexIndex[1] = face.vertexIndex[2];
+				secondFace.textureCoordIndex[1] = face.textureCoordIndex[2];
+				secondFace.normalIndex[1] = face.normalIndex[2];
+
+				faces.push_back(secondFace);
 			}
 		}
 	}
 
-	if (normals.empty())
+	if (textureCoords.size() == 0)
 	{
-		this->normals.resize(this->vertices.size(), glm::vec3(0.0f, 0.0f, 0.0f));
+		std::cout << "No texture coordinates found, using default texture coordinates" << std::endl;
+		textureCoords.resize(vertices.size());
 
-		for (size_t i = 0; i < this->vertexIndices.size(); i += 3)
+		for (size_t i = 0; i < vertices.size(); i++)
 		{
-			glm::vec3 v1 = this->vertices[this->vertexIndices[i]];
-			glm::vec3 v2 = this->vertices[this->vertexIndices[i + 1]];
-			glm::vec3 v3 = this->vertices[this->vertexIndices[i + 2]];
-
-			glm::vec3 normal = glm::normalize(glm::cross(v2 - v1, v3 - v1));
-
-			this->normals[this->vertexIndices[i]] += normal;
-			this->normals[this->vertexIndices[i + 1]] += normal;
-			this->normals[this->vertexIndices[i + 2]] += normal;
+			float u = std::atan2(vertices[i].z, vertices[i].x) / (2.0f * M_PI) + 0.5f;
+			float v = asinf(vertices[i].y) / M_PI + 0.5f;
+			textureCoords[i] = { u, v };
 		}
-
-		for (size_t i = 0; i < this->normals.size(); ++i)
-			this->normals[i] = glm::normalize(this->normals[i]);
 	}
+
+	for (const auto& face : faces)
+		for (int i = 0; i < 3; ++i)
+			this->indices.push_back(face.vertexIndex[i]);
 
 	glGenVertexArrays(1, &this->VAO);
 	glGenBuffers(1, &this->VBO);
@@ -526,48 +579,39 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	glBindVertexArray(this->VAO);
 
+	// Fill EBO with indices data
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertexIndices.size() * sizeof(unsigned int), &vertexIndices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices.size() * sizeof(unsigned int), this->indices.data(), GL_STATIC_DRAW);
 
+	// Attribute 0: vertex position
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-	glBufferData(GL_ARRAY_BUFFER, this->vertices.size() * sizeof(glm::vec3), &this->vertices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 
+
+	// Attribute 1: texture coordinates
 	glEnableVertexAttribArray(1);
 	glBindBuffer(GL_ARRAY_BUFFER, this->textureVBO);
-	glBufferData(GL_ARRAY_BUFFER, this->textures.size() * sizeof(glm::vec2), &this->textures[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, this->textureCoords.size() * sizeof(TextureCoord), this->textureCoords.data(), GL_STATIC_DRAW);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 
+	// Attribute 2: normals
 	glEnableVertexAttribArray(2);
 	glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
-	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(glm::vec3), &this->normals[0], GL_STATIC_DRAW);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(Normal), this->normals.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 
-	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	this->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-	glShaderSource(this->vertexShader, 1, &vertexShaderSource, nullptr);
-	glShaderSource(this->fragmentShader, 1, &fragmentShaderSource, nullptr);
-
-	glCompileShader(this->vertexShader);
-	glCompileShader(this->fragmentShader);
-
-	this->shaderProgram = glCreateProgram();
-	glAttachShader(this->shaderProgram, this->vertexShader);
-	glAttachShader(this->shaderProgram, this->fragmentShader);
-	glLinkProgram(this->shaderProgram);
-
-	glDeleteShader(this->vertexShader);
-	glDeleteShader(this->fragmentShader);
+	glBindVertexArray(0);
 }
+
 
 glm::vec3 Scop::calculateModelCenterOffset()
 {
 	glm::vec3 minCoords = glm::vec3(std::numeric_limits<float>::max());
 	glm::vec3 maxCoords = glm::vec3(std::numeric_limits<float>::lowest());
 
-	for (const glm::vec3& vertex : vertices)
+	for (const auto& vertex : vertices)
 	{
 		minCoords = glm::min(minCoords, vertex);
 		maxCoords = glm::max(maxCoords, vertex);
