@@ -138,18 +138,18 @@ struct Mat4 {
 		return viewMatrix;
 	}
 
-	static Mat4 perspective(float fov, float aspect, float near, float far)
+	static Mat4 perspective(float fovy, float aspect, float near, float far)
 	{
 		Mat4 result;
 
-		float tanHalfFov = std::tan(fov / 2.0f);
+		float tanHalfFov = tan(fovy / 2.0f);
 		float range = near - far;
 
-		result.data[0] = 1.0f / (tanHalfFov * aspect);
-		result.data[5] = 1.0f / tanHalfFov;
-		result.data[10] = (-near - far) / range;
-		result.data[11] = 2.0f * far * near / range;
-		result.data[14] = 1.0f;
+		result(0, 0) = 1.0f / (tanHalfFov * aspect);
+		result(1, 1) = 1.0f / tanHalfFov;
+		result(2, 2) = (near + far) / range;
+		result(2, 3) = -1.0f;
+		result(3, 2) = 2.0f * far * near / range;
 
 		return result;
 	}

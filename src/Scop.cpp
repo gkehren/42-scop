@@ -339,49 +339,46 @@ void	Scop::cameraMovement()
 	if (this->pitch < -89.0f)
 		this->pitch = -89.0f;
 
-	Vec3 front;
+	Vec3 front(0.0f, 0.0f, 0.0f);
 	front.x = cos(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
 	front.y = sin(glm::radians(this->pitch));
 	front.z = sin(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
 	this->cameraFront = Vec3::normalize(front);
 
 	this->cameraPos = this->cameraTarget - this->cameraFront * this->distanceFromCube;
-
-	std::cout << "Camera position: " << this->cameraPos.x << ", " << this->cameraPos.y << ", " << this->cameraPos.z << std::endl;
-	std::cout << "Camera Target: " << this->cameraTarget.x << ", " << this->cameraTarget.y << ", " << this->cameraTarget.z << std::endl;
-	std::cout << "Camera Up: " << this->cameraUp.x << ", " << this->cameraUp.y << ", " << this->cameraUp.z << std::endl;
 	this->view = Mat4::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
 }
 
 void Scop::objectMovement()
 {
-	//Mat3 rotationMatrix3 = Mat3(this->model);
-	//Mat3 invRotationMatrix = Mat3::transpose(rotationMatrix3);
+	Mat3 rotationMatrix3 = Mat3(this->model);
+	Mat3 invRotationMatrix = Mat3::transpose(rotationMatrix3);
 
-	//Vec3 translationDelta(0.0f, 0.0f, 0.0f);
+	Vec3 translationDelta(0.0f, 0.0f, 0.0f);
 
-	//if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
-	//	translationDelta = translationDelta + Vec3::normalize(invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f)) * movementSpeed;
-	//if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
-	//	translationDelta = translationDelta - Vec3::normalize(invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f)) * movementSpeed;
-	//if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
-	//	translationDelta = translationDelta - Vec3::normalize(invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f)) * movementSpeed;
-	//if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
-	//	translationDelta = translationDelta + Vec3::normalize(invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f)) * movementSpeed;
-	//if (glfwGetKey(this->window, GLFW_KEY_Q) == GLFW_PRESS)
-	//	translationDelta = translationDelta + Vec3(0.0f, 1.0f, 0.0f) * movementSpeed;
-	//if (glfwGetKey(this->window, GLFW_KEY_E) == GLFW_PRESS)
-	//	translationDelta = translationDelta - Vec3(0.0f, 1.0f, 0.0f) * movementSpeed;
-	//if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
-	//	translationDelta = -objectPosition;
+	if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
+		translationDelta = translationDelta + Vec3::normalize(invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f)) * movementSpeed;
+	if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
+		translationDelta = translationDelta - Vec3::normalize(invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f)) * movementSpeed;
+	if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
+		translationDelta = translationDelta - Vec3::normalize(invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f)) * movementSpeed;
+	if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
+		translationDelta = translationDelta + Vec3::normalize(invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f)) * movementSpeed;
+	if (glfwGetKey(this->window, GLFW_KEY_Q) == GLFW_PRESS)
+		translationDelta = translationDelta + Vec3(0.0f, 1.0f, 0.0f) * movementSpeed;
+	if (glfwGetKey(this->window, GLFW_KEY_E) == GLFW_PRESS)
+		translationDelta = translationDelta - Vec3(0.0f, 1.0f, 0.0f) * movementSpeed;
+	if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
+		translationDelta = -objectPosition;
 
-	//this->objectPosition = this->objectPosition + translationDelta;
+	this->objectPosition = this->objectPosition + translationDelta;
 	//this->rotationAngle = this->rotationSpeed * this->deltaTime;
 
 	//Mat4 rotationMatrix4 = Mat4::rotateY(this->rotationAngle);
 	//Vec3 modelCenterOffset = calculateModelCenterOffset();
 
 	//this->model = Mat4::translate(Mat4(1.0f), this->objectPosition - modelCenterOffset) * this->model * rotationMatrix4 * Mat4::translate(Mat4(1.0f), modelCenterOffset);
+	this->model = Mat4::translate(Mat4(1.0f), this->objectPosition);
 }
 
 void	Scop::updateUI()
@@ -415,7 +412,7 @@ void	Scop::updateUI()
 		ImGuiFileDialog::Instance()->Close();
 	}
 	if (ImGui::Button("Reset object"))
-		this->objectPosition = Vec3(0.0f, 0.0f, 0.0f);
+		this->objectPosition = Vec3(1.0f, 1.0f, 1.0f);
 	if (ImGui::Button("Reset camera"))
 	{
 		this->yaw = -90.0f;
