@@ -77,6 +77,16 @@ const char* fragmentShaderSource = R"(
 	}
 )";
 
+Mat4::Mat4(const Mat3& mat3) {
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			(*this)(i, j) = mat3(i, j);
+
+	(*this)(3, 0) = (*this)(3, 1) = (*this)(3, 2) = 0.0f;
+	(*this)(0, 3) = (*this)(1, 3) = (*this)(2, 3) = 0.0f;
+	(*this)(3, 3) = 1.0f;
+}
+
 void	errorCallback(int error, const char* description)
 {
 	(void)error;
@@ -156,23 +166,23 @@ Scop::Scop()
 	this->showGradient = false;
 	this->showLight = true;
 
-	this->cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-	this->cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-	this->cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-	this->cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+	this->cameraPos = Vec3(0.0f, 0.0f, 3.0f);
+	this->cameraFront = Vec3(0.0f, 0.0f, -1.0f);
+	this->cameraTarget = Vec3(0.0f, 0.0f, 0.0f);
+	this->cameraUp = Vec3(0.0f, 1.0f, 0.0f);
 
-	this->view = glm::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
-	this->projection = glm::perspective(glm::radians(45.0f), (float)this->windowWidth / (float)this->windowHeight, 0.1f, 100.0f);
-	this->model = glm::mat4(1.0f);
+	this->view = Mat4::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
+	this->projection = Mat4::perspective(glm::radians(45.0f), (float)this->windowWidth / (float)this->windowHeight, 0.1f, 100.0f);
+	this->model = Mat4();
 
-	this->lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-	this->lightPos = glm::vec3(0.0f, 10.0f, 0.0f);
-	this->objectColor = glm::vec3(1.0f, 0.5f, 0.31f);
+	this->lightColor = Vec3(1.0f, 1.0f, 1.0f);
+	this->lightPos = Vec3(0.0f, 10.0f, 0.0f);
+	this->objectColor = Vec3(1.0f, 0.5f, 0.31f);
 
 	this->movementSpeed = 0.05f;
 	this->rotationSpeed = 0.5f;
 	this->rotationAngle = 0.0f;
-	this->objectPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+	this->objectPosition = Vec3(0.0f, 0.0f, 0.0f);
 
 	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
 	this->loadbmpFile("/home/gkehren/42-scop/ressources/chaton.bmp");
@@ -251,17 +261,17 @@ void	Scop::run()
 		ImGui::NewFrame();
 
 		this->cameraMovement();
-		this->objectMovement();
+		//this->objectMovement();
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glUseProgram(this->shaderProgram);
-		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(this->model));
-		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(this->view));
-		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(this->projection));
-		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightColor"), 1, glm::value_ptr(this->lightColor));
-		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightPos"), 1, glm::value_ptr(this->lightPos));
-		glUniform3fv(glGetUniformLocation(this->shaderProgram, "objectColor"), 1, glm::value_ptr(this->objectColor));
+		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "model"), 1, GL_FALSE, Mat4::value_ptr(this->model));
+		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "view"), 1, GL_FALSE, Mat4::value_ptr(this->view));
+		glUniformMatrix4fv(glGetUniformLocation(this->shaderProgram, "projection"), 1, GL_FALSE, Mat4::value_ptr(this->projection));
+		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightColor"), 1, Vec3::value_ptr(this->lightColor));
+		glUniform3fv(glGetUniformLocation(this->shaderProgram, "lightPos"), 1, Vec3::value_ptr(this->lightPos));
+		glUniform3fv(glGetUniformLocation(this->shaderProgram, "objectColor"), 1, Vec3::value_ptr(this->objectColor));
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "textureSampler"), 0);
@@ -329,46 +339,49 @@ void	Scop::cameraMovement()
 	if (this->pitch < -89.0f)
 		this->pitch = -89.0f;
 
-	glm::vec3 front;
+	Vec3 front;
 	front.x = cos(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
 	front.y = sin(glm::radians(this->pitch));
 	front.z = sin(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
-	this->cameraFront = glm::normalize(front);
+	this->cameraFront = Vec3::normalize(front);
 
-	this->cameraPos = this->cameraTarget - this->distanceFromCube * this->cameraFront;
+	this->cameraPos = this->cameraTarget - this->cameraFront * this->distanceFromCube;
 
-	this->view = glm::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
+	std::cout << "Camera position: " << this->cameraPos.x << ", " << this->cameraPos.y << ", " << this->cameraPos.z << std::endl;
+	std::cout << "Camera Target: " << this->cameraTarget.x << ", " << this->cameraTarget.y << ", " << this->cameraTarget.z << std::endl;
+	std::cout << "Camera Up: " << this->cameraUp.x << ", " << this->cameraUp.y << ", " << this->cameraUp.z << std::endl;
+	this->view = Mat4::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
 }
 
 void Scop::objectMovement()
 {
-	glm::mat3 rotationMatrix3 = glm::mat3(this->model);
-	glm::mat3 invRotationMatrix = glm::transpose(rotationMatrix3);
+	//Mat3 rotationMatrix3 = Mat3(this->model);
+	//Mat3 invRotationMatrix = Mat3::transpose(rotationMatrix3);
 
-	glm::vec3 translationDelta(0.0f);
+	//Vec3 translationDelta(0.0f, 0.0f, 0.0f);
 
-	if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
-		translationDelta += movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(0.0f, 0.0f, -1.0f));
-	if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
-		translationDelta -= movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(0.0f, 0.0f, -1.0f));
-	if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
-		translationDelta -= movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(1.0f, 0.0f, 0.0f));
-	if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
-		translationDelta += movementSpeed * glm::normalize(invRotationMatrix * glm::vec3(1.0f, 0.0f, 0.0f));
-	if (glfwGetKey(this->window, GLFW_KEY_Q) == GLFW_PRESS)
-		translationDelta += movementSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
-	if (glfwGetKey(this->window, GLFW_KEY_E) == GLFW_PRESS)
-		translationDelta -= movementSpeed * glm::vec3(0.0f, 1.0f, 0.0f);
-	if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
-		translationDelta = -objectPosition;
+	//if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
+	//	translationDelta = translationDelta + Vec3::normalize(invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f)) * movementSpeed;
+	//if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
+	//	translationDelta = translationDelta - Vec3::normalize(invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f)) * movementSpeed;
+	//if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
+	//	translationDelta = translationDelta - Vec3::normalize(invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f)) * movementSpeed;
+	//if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
+	//	translationDelta = translationDelta + Vec3::normalize(invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f)) * movementSpeed;
+	//if (glfwGetKey(this->window, GLFW_KEY_Q) == GLFW_PRESS)
+	//	translationDelta = translationDelta + Vec3(0.0f, 1.0f, 0.0f) * movementSpeed;
+	//if (glfwGetKey(this->window, GLFW_KEY_E) == GLFW_PRESS)
+	//	translationDelta = translationDelta - Vec3(0.0f, 1.0f, 0.0f) * movementSpeed;
+	//if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	//	translationDelta = -objectPosition;
 
-	this->objectPosition += translationDelta;
-	this->rotationAngle = this->rotationSpeed * this->deltaTime;
+	//this->objectPosition = this->objectPosition + translationDelta;
+	//this->rotationAngle = this->rotationSpeed * this->deltaTime;
 
-	glm::mat4 rotationMatrix4 = glm::rotate(glm::mat4(1.0f), this->rotationAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::vec3 modelCenterOffset = calculateModelCenterOffset();
+	//Mat4 rotationMatrix4 = Mat4::rotateY(this->rotationAngle);
+	//Vec3 modelCenterOffset = calculateModelCenterOffset();
 
-	this->model = glm::translate(glm::mat4(1.0f), this->objectPosition - modelCenterOffset) * glm::mat4(rotationMatrix3) * rotationMatrix4 * glm::translate(glm::mat4(1.0f), modelCenterOffset);
+	//this->model = Mat4::translate(Mat4(1.0f), this->objectPosition - modelCenterOffset) * this->model * rotationMatrix4 * Mat4::translate(Mat4(1.0f), modelCenterOffset);
 }
 
 void	Scop::updateUI()
@@ -402,7 +415,7 @@ void	Scop::updateUI()
 		ImGuiFileDialog::Instance()->Close();
 	}
 	if (ImGui::Button("Reset object"))
-		this->objectPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+		this->objectPosition = Vec3(0.0f, 0.0f, 0.0f);
 	if (ImGui::Button("Reset camera"))
 	{
 		this->yaw = -90.0f;
@@ -414,8 +427,8 @@ void	Scop::updateUI()
 	ImGui::Checkbox("Texture", &this->showTextures);
 	ImGui::Checkbox("Gradient", &this->showGradient);
 	ImGui::Checkbox("Light", &this->showLight);
-	ImGui::ColorEdit3("Object Color", glm::value_ptr(this->objectColor));
-	ImGui::ColorEdit3("Light Color", glm::value_ptr(this->lightColor));
+	ImGui::ColorEdit3("Object Color", &this->objectColor.x);
+	ImGui::ColorEdit3("Light Color", &this->lightColor.x);
 
 	ImGui::End();
 
@@ -477,7 +490,7 @@ void	Scop::loadObjFile(std::string filePathName)
 		iss >> lineType;
 		if (lineType == "v")
 		{
-			Vertex vertex;
+			Vec3 vertex;
 			iss >> vertex.x >> vertex.y >> vertex.z;
 			this->vertices.push_back(vertex);
 		}
@@ -586,9 +599,8 @@ void	Scop::loadObjFile(std::string filePathName)
 	// Attribute 0: vertex position
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vec3), vertices.data(), GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
 
 	// Attribute 1: texture coordinates
 	glEnableVertexAttribArray(1);
@@ -606,18 +618,23 @@ void	Scop::loadObjFile(std::string filePathName)
 }
 
 
-glm::vec3 Scop::calculateModelCenterOffset()
+Vec3	Scop::calculateModelCenterOffset()
 {
-	glm::vec3 minCoords = glm::vec3(std::numeric_limits<float>::max());
-	glm::vec3 maxCoords = glm::vec3(std::numeric_limits<float>::lowest());
+	Vec3 minCoords = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+	Vec3 maxCoords = {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
 
 	for (const auto& vertex : vertices)
 	{
-		minCoords = glm::min(minCoords, vertex);
-		maxCoords = glm::max(maxCoords, vertex);
+		minCoords.x = std::min(minCoords.x, vertex.x);
+		minCoords.y = std::min(minCoords.y, vertex.y);
+		minCoords.z = std::min(minCoords.z, vertex.z);
+
+		maxCoords.x = std::max(maxCoords.x, vertex.x);
+		maxCoords.y = std::max(maxCoords.y, vertex.y);
+		maxCoords.z = std::max(maxCoords.z, vertex.z);
 	}
 
-	glm::vec3 center = (minCoords + maxCoords) * 0.5f;
+	Vec3 center = {(minCoords.x + maxCoords.x) * 0.5f, (minCoords.y + maxCoords.y) * 0.5f, (minCoords.z + maxCoords.z) * 0.5f};
 
-	return -center;
+	return {-center.x, -center.y, -center.z};
 }

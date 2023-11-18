@@ -12,24 +12,7 @@
 #include "../imgui/ImGuiFileDialog.h"
 #include <fstream>
 #include <cmath>
-
-struct Vertex {
-	float x, y, z;
-};
-
-struct Normal {
-	float nx, ny, nz;
-};
-
-struct TextureCoord {
-	float u, v;
-};
-
-struct Face {
-	int vertexIndex[4];
-	int normalIndex[4];
-	int textureCoordIndex[4];
-};
+#include "struct.hpp"
 
 class Scop
 {
@@ -62,21 +45,21 @@ class Scop
 		float distanceFromCube;
 		float fps;
 		float sensitivity;
-		glm::vec3 cameraPos;
-		glm::vec3 cameraFront;
-		glm::vec3 cameraTarget;
-		glm::vec3 cameraUp;
-		glm::mat4 view;
-		glm::mat4 projection;
-		glm::mat4 model;
-		glm::vec3 lightPos;
-		glm::vec3 lightColor;
-		glm::vec3 objectColor;
+		Vec3		cameraPos;
+		Vec3		cameraFront;
+		Vec3		cameraTarget;
+		Vec3		cameraUp;
+		Mat4		view;
+		Mat4		projection;
+		Mat4		model;
+		Vec3		lightPos;
+		Vec3		lightColor;
+		Vec3		objectColor;
 
 		float		movementSpeed;
 		float		rotationSpeed;
 		float		rotationAngle;
-		glm::vec3	objectPosition;
+		Vec3		objectPosition;
 
 		GLuint	VAO;
 		GLuint	VBO;
@@ -100,7 +83,7 @@ class Scop
 		GLuint	textureVBO;
 		GLuint	normalVBO;
 
-		std::vector<Vertex>			vertices;
+		std::vector<Vec3>			vertices;
 		std::vector<Normal>			normals;
 		std::vector<TextureCoord>	textureCoords;
 		std::vector<Face>			faces;
@@ -111,5 +94,5 @@ class Scop
 		void		updateUI();
 		void		loadObjFile(std::string filePathName);
 		void		loadbmpFile(std::string filePathName);
-		glm::vec3	calculateModelCenterOffset();
+		Vec3		calculateModelCenterOffset();
 };
