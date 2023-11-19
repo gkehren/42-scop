@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <stdexcept>
 #include <cmath>
 #include <GL/glew.h>
 
@@ -25,13 +27,41 @@ struct Vec3 {
 		return Vec3(-x, -y, -z);
 	}
 
+	Vec3 operator/(float scalar) const {
+		return Vec3(x / scalar, y / scalar, z / scalar);
+	}
+
+	Vec3& operator+=(const Vec3& other) {
+		x += other.x;
+		y += other.y;
+		z += other.z;
+		return *this;
+	}
+
+	Vec3& operator-=(const Vec3& other) {
+		x -= other.x;
+		y -= other.y;
+		z -= other.z;
+		return *this;
+	}
+
 	static float length(Vec3 v) {
 		return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 	}
 
-	static Vec3 normalize(Vec3 v) {
-		float len = length(v);
-		return {v.x / len, v.y / len, v.z / len};
+	static Vec3 normalize(const Vec3& v) {
+	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+	if (length != 0.0f) {
+		float invLength = 1.0f / length;
+		return {v.x * invLength, v.y * invLength, v.z * invLength};
+	} else {
+		return {0.0f, 0.0f, 0.0f};
+	}
+}
+
+	Vec3 normalize() const {
+		float len = length(*this);
+		return {x / len, y / len, z / len};
 	}
 
 	static Vec3 cross(Vec3 v1, Vec3 v2) {
@@ -61,6 +91,14 @@ struct Vec3 {
 	static const GLfloat* value_ptr(Vec3& vec) {
 		return &vec.x;
 	}
+
+	static Vec3 min(const Vec3& a, const Vec3& b) {
+		return Vec3(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z));
+	}
+
+	static Vec3 max(const Vec3& a, const Vec3& b) {
+		return Vec3(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z));
+	}
 };
 
 struct Mat3;
@@ -83,11 +121,21 @@ struct Mat4 {
 
 	Mat4(float x) {
 		for (int i = 0; i < 16; i++)
-			data[i] = x;
+			data[i] = 0.0f;
+
+		data[0] = data[5] = data[10] = data[15] = x;
 	}
 
 	float& operator()(int row, int col) {
 		return data[row * 4 + col];
+	}
+
+	const float& at(int row, int col) const {
+		if (row >= 0 && row < 4 && col >= 0 && col < 4) {
+			return data[row * 4 + col];
+		} else {
+			throw std::out_of_range("Mat4 index out of range");
+		}
 	}
 
 	Mat4 operator*(Mat4& other) {
@@ -117,6 +165,18 @@ struct Mat4 {
 			}
 		}
 		return result;
+	}
+
+	Mat4& operator+=(const Mat4& other) {
+		for (int i = 0; i < 16; i++)
+			data[i] += other.data[i];
+		return *this;
+	}
+
+	Mat4& operator-=(const Mat4& other) {
+		for (int i = 0; i < 16; i++)
+			data[i] -= other.data[i];
+		return *this;
 	}
 
 	static Mat4 lookAt(const Vec3& eye, const Vec3& target, const Vec3& up)
@@ -154,28 +214,27 @@ struct Mat4 {
 		return result;
 	}
 
-	static Mat4 rotateY(float angle)
-	{
+	static Mat4 rotateY(float angle) {
 		Mat4 result;
 
-		float cosTheta = std::cos(angle);
-		float sinTheta = std::sin(angle);
+		float cosTheta = cos(angle);
+		float sinTheta = sin(angle);
 
 		result(0, 0) = cosTheta;
-		result(0, 2) = sinTheta;
-		result(2, 0) = -sinTheta;
+		result(0, 2) = -sinTheta;
+		result(2, 0) = sinTheta;
 		result(2, 2) = cosTheta;
 
 		return result;
 	}
 
-	static Mat4 translate(const Mat4& matrix, const Vec3& translation)
+	static Mat4 translate(const Vec3& translation)
 	{
-		Mat4 result = matrix;
+		Mat4 result(1.0f);
 
-		result(0, 3) += translation.x;
-		result(1, 3) += translation.y;
-		result(2, 3) += translation.z;
+		result.data[12] = translation.x;
+		result.data[13] = translation.y;
+		result.data[14] = translation.z;
 
 		return result;
 	}
@@ -197,7 +256,7 @@ struct Mat3 {
 	Mat3(const Mat4& mat4) {
 		for (int i = 0; i < 3; i++)
 			for (int j = 0; j < 3 ; j++)
-				data[i * 3 + j] = mat4.data[i * 4 + j];
+				data[i * 3 + j] = mat4.at(i, j);
 	}
 
 	float& operator()(int row, int col) {
@@ -214,6 +273,15 @@ struct Mat3 {
 			data[3] * vec.x + data[4] * vec.y + data[5] * vec.z,
 			data[6] * vec.x + data[7] * vec.y + data[8] * vec.z
 		);
+	}
+
+	Mat3 operator*(float scalar) const {
+		Mat3 result;
+
+		for (int i = 0; i < 9; i++)
+			result.data[i] = data[i] * scalar;
+
+		return result;
 	}
 
 	static Mat3 transpose(const Mat3& matrix) {

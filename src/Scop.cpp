@@ -87,6 +87,14 @@ Mat4::Mat4(const Mat3& mat3) {
 	(*this)(3, 3) = 1.0f;
 }
 
+Mat3 operator*(float scalar, const Mat3& matrix) {
+	return matrix * scalar;
+}
+
+Vec3 operator*(float scalar, const Vec3& vec) {
+	return vec * scalar;
+}
+
 void	errorCallback(int error, const char* description)
 {
 	(void)error;
@@ -261,7 +269,7 @@ void	Scop::run()
 		ImGui::NewFrame();
 
 		this->cameraMovement();
-		//this->objectMovement();
+		this->objectMovement();
 
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -357,28 +365,29 @@ void Scop::objectMovement()
 	Vec3 translationDelta(0.0f, 0.0f, 0.0f);
 
 	if (glfwGetKey(this->window, GLFW_KEY_W) == GLFW_PRESS)
-		translationDelta = translationDelta + Vec3::normalize(invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f)) * movementSpeed;
+		translationDelta += movementSpeed * invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f);
 	if (glfwGetKey(this->window, GLFW_KEY_S) == GLFW_PRESS)
-		translationDelta = translationDelta - Vec3::normalize(invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f)) * movementSpeed;
+		translationDelta -= movementSpeed * invRotationMatrix * Vec3(0.0f, 0.0f, -1.0f);
 	if (glfwGetKey(this->window, GLFW_KEY_A) == GLFW_PRESS)
-		translationDelta = translationDelta - Vec3::normalize(invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f)) * movementSpeed;
+		translationDelta -= movementSpeed * invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f);
 	if (glfwGetKey(this->window, GLFW_KEY_D) == GLFW_PRESS)
-		translationDelta = translationDelta + Vec3::normalize(invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f)) * movementSpeed;
+		translationDelta += movementSpeed * invRotationMatrix * Vec3(1.0f, 0.0f, 0.0f);
 	if (glfwGetKey(this->window, GLFW_KEY_Q) == GLFW_PRESS)
-		translationDelta = translationDelta + Vec3(0.0f, 1.0f, 0.0f) * movementSpeed;
+		translationDelta += movementSpeed * Vec3(0.0f, 1.0f, 0.0f);
 	if (glfwGetKey(this->window, GLFW_KEY_E) == GLFW_PRESS)
-		translationDelta = translationDelta - Vec3(0.0f, 1.0f, 0.0f) * movementSpeed;
+		translationDelta -= movementSpeed * Vec3(0.0f, 1.0f, 0.0f);
 	if (glfwGetKey(this->window, GLFW_KEY_SPACE) == GLFW_PRESS)
 		translationDelta = -objectPosition;
 
-	this->objectPosition = this->objectPosition + translationDelta;
-	//this->rotationAngle = this->rotationSpeed * this->deltaTime;
+	this->objectPosition += translationDelta;
+	this->rotationAngle = this->rotationSpeed * this->deltaTime;
 
-	//Mat4 rotationMatrix4 = Mat4::rotateY(this->rotationAngle);
-	//Vec3 modelCenterOffset = calculateModelCenterOffset();
+	Vec3 modelCenterOffset = this->calculateModelCenterOffset() - this->objectPosition;
+	Mat4 translationToOrigin = Mat4::translate(-modelCenterOffset);
+	Mat4 translationBack = Mat4::translate(modelCenterOffset);
+	Mat4 rotationMatrix4 = Mat4::rotateY(this->rotationAngle);
 
-	//this->model = Mat4::translate(Mat4(1.0f), this->objectPosition - modelCenterOffset) * this->model * rotationMatrix4 * Mat4::translate(Mat4(1.0f), modelCenterOffset);
-	this->model = Mat4::translate(Mat4(1.0f), this->objectPosition);
+	this->model = Mat4::translate(this->objectPosition) * translationBack * Mat4(rotationMatrix3) * rotationMatrix4 * translationToOrigin;
 }
 
 void	Scop::updateUI()
@@ -612,26 +621,23 @@ void	Scop::loadObjFile(std::string filePathName)
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 
 	glBindVertexArray(0);
+
+	cameraTarget = calculateModelCenterOffset();
 }
 
 
-Vec3	Scop::calculateModelCenterOffset()
+Vec3 Scop::calculateModelCenterOffset()
 {
-	Vec3 minCoords = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-	Vec3 maxCoords = {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
+	Vec3 min = Vec3(FLT_MAX, FLT_MAX, FLT_MAX);
+	Vec3 max = Vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
-	for (const auto& vertex : vertices)
+	for (const Vec3& vertex : vertices)
 	{
-		minCoords.x = std::min(minCoords.x, vertex.x);
-		minCoords.y = std::min(minCoords.y, vertex.y);
-		minCoords.z = std::min(minCoords.z, vertex.z);
-
-		maxCoords.x = std::max(maxCoords.x, vertex.x);
-		maxCoords.y = std::max(maxCoords.y, vertex.y);
-		maxCoords.z = std::max(maxCoords.z, vertex.z);
+		min = Vec3::min(min, vertex);
+		max = Vec3::max(max, vertex);
 	}
 
-	Vec3 center = {(minCoords.x + maxCoords.x) * 0.5f, (minCoords.y + maxCoords.y) * 0.5f, (minCoords.z + maxCoords.z) * 0.5f};
+	Vec3 center = (min + max) * 0.5f;
 
-	return {-center.x, -center.y, -center.z};
+	return -center;
 }
