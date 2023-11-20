@@ -26,25 +26,25 @@ class Scop
 		static void	scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
 	private:
-		GLFWwindow* window;
+		GLFWwindow*	window;
 
-		int		windowWidth;
-		int		windowHeight;
+		int			windowWidth;
+		int			windowHeight;
 
-		float deltaTime;
-		float lastFrame;
-		float totalTime;
-		float updateInterval;
-		int frames;
+		float		deltaTime;
+		float		lastFrame;
+		float		totalTime;
+		float		updateInterval;
+		int			frames;
 
-		double lastX;
-		double lastY;
-		bool firstMouse;
-		float yaw;
-		float pitch;
-		float distanceFromCube;
-		float fps;
-		float sensitivity;
+		double		lastX;
+		double		lastY;
+		bool		firstMouse;
+		float		yaw;
+		float		pitch;
+		float		distanceFromCube;
+		float		fps;
+		float		sensitivity;
 		Vec3		cameraPos;
 		Vec3		cameraFront;
 		Vec3		cameraTarget;
@@ -56,19 +56,25 @@ class Scop
 		Vec3		lightColor;
 		Vec3		objectColor;
 
+		// soft transition
+		bool		transition;
+		bool		previousShowTextures;
+		float		transitionFactor;
+		float		transitionStartTime;
+		float		transitionDuration;
+
 		float		movementSpeed;
 		float		rotationSpeed;
 		float		rotationAngle;
 		Vec3		objectPosition;
 
-		GLuint	VAO;
-		GLuint	VBO;
-		GLuint	EBO;
+		GLuint		VAO;
+		GLuint		VBO;
+		GLuint		EBO;
 
-		bool	showTextures;
-		bool	showWireframe;
-		bool	showGradient;
-		bool	showLight;
+		bool		showTextures;
+		bool		showWireframe;
+		bool		showLight;
 
 		// Texture
 		unsigned char	*imageData;
@@ -77,14 +83,14 @@ class Scop
 		int				imageChannels;
 		GLuint			textureID;
 
-		GLuint	vertexShader;
-		GLuint	fragmentShader;
-		GLuint	shaderProgram;
-		GLuint	textureVBO;
-		GLuint	normalVBO;
+		GLuint			vertexShader;
+		GLuint			fragmentShader;
+		GLuint			shaderProgram;
+		GLuint			textureVBO;
+		GLuint			normalVBO;
 
 		std::vector<Vec3>			vertices;
-		std::vector<Normal>			normals;
+		std::vector<Vec3>			normals;
 		std::vector<TextureCoord>	textureCoords;
 		std::vector<Face>			faces;
 		std::vector<unsigned int>	indices;

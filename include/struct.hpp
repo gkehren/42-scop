@@ -295,10 +295,6 @@ struct Mat3 {
 	}
 };
 
-struct Normal {
-	float nx, ny, nz;
-};
-
 struct TextureCoord {
 	float u, v;
 };

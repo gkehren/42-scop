@@ -40,22 +40,14 @@ const char* fragmentShaderSource = R"(
 	uniform vec3 objectColor;
 
 	uniform sampler2D textureSampler; // Texture sampler
-	uniform bool showTextures;
-	uniform bool showGradient;
 	uniform bool showLight;
+	uniform float transitionFactor; // Transition factor between texture and gradient
 
 	void main() {
 		vec3 result = vec3(0.0);
 
-		if (showTextures) {
-			vec3 textureColor = texture(textureSampler, TexCoord).xyz;
-			result = textureColor;
-		} else if (showGradient) {
-			vec3 gradientColor = mix(vec3(TexCoord.y, TexCoord.x, 0.5), objectColor, 0.5);
-			result = gradientColor;
-		} else {
-			result = objectColor;
-		}
+		vec3 textureColor = texture(textureSampler, TexCoord).xyz;
+		result = mix(objectColor, textureColor, transitionFactor);
 
 		if (showLight) {
 			// Calculate lighting
@@ -171,7 +163,6 @@ Scop::Scop()
 	this->fps = 0.0f;
 	this->showTextures = false;
 	this->showWireframe = false;
-	this->showGradient = false;
 	this->showLight = true;
 
 	this->cameraPos = Vec3(0.0f, 0.0f, 3.0f);
@@ -191,6 +182,12 @@ Scop::Scop()
 	this->rotationSpeed = 0.5f;
 	this->rotationAngle = 0.0f;
 	this->objectPosition = Vec3(0.0f, 0.0f, 0.0f);
+
+	this->transition = false;
+	this->previousShowTextures = false;
+	this->transitionFactor = 0.0f;
+	this->transitionStartTime = 0.0f;
+	this->transitionDuration = 1.0f;
 
 	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
 	this->loadbmpFile("/home/gkehren/42-scop/ressources/chaton.bmp");
@@ -283,9 +280,8 @@ void	Scop::run()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "textureSampler"), 0);
-		glUniform1i(glGetUniformLocation(this->shaderProgram, "showTextures"), this->showTextures);
-		glUniform1i(glGetUniformLocation(this->shaderProgram, "showGradient"), this->showGradient);
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "showLight"), this->showLight);
+		glUniform1f(glGetUniformLocation(this->shaderProgram, "transitionFactor"), this->transitionFactor);
 
 		if (showWireframe)
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -431,10 +427,41 @@ void	Scop::updateUI()
 	ImGui::SliderFloat("Rotation Speed", &this->rotationSpeed, 0.0f, 2.0f);
 	ImGui::Checkbox("Wireframe", &this->showWireframe);
 	ImGui::Checkbox("Texture", &this->showTextures);
-	ImGui::Checkbox("Gradient", &this->showGradient);
 	ImGui::Checkbox("Light", &this->showLight);
 	ImGui::ColorEdit3("Object Color", &this->objectColor.x);
 	ImGui::ColorEdit3("Light Color", &this->lightColor.x);
+
+	ImGui::Text("Debug : %s = %s", this->showTextures ? "true" : "false", this->previousShowTextures ? "true" : "false");
+	ImGui::Text("TransitionFactor : %f", this->transitionFactor);
+	if (this->showTextures != this->previousShowTextures)
+	{
+		this->transitionStartTime = glfwGetTime();
+		this->transition = true;
+	}
+
+	if (this->transition && this->showTextures)
+	{
+		float transitionTime = glfwGetTime() - this->transitionStartTime;
+		this->transitionFactor = transitionTime / this->transitionDuration;
+
+		if (this->transitionFactor >= 1.0f)
+		{
+			this->transitionFactor = 1.0f;
+			this->transition = false;
+		}
+	}
+	else if (this->transition && !this->showTextures)
+	{
+		float transitionTime = glfwGetTime() - this->transitionStartTime;
+		this->transitionFactor = 1.0f - transitionTime / this->transitionDuration;
+
+		if (this->transitionFactor <= 0.0f)
+		{
+			this->transitionFactor = 0.0f;
+			this->transition = false;
+		}
+	}
+	this->previousShowTextures = this->showTextures;
 
 	ImGui::End();
 
@@ -475,8 +502,6 @@ void	Scop::loadObjFile(std::string filePathName)
 		return ;
 	}
 
-	std::cout << "Loading file: " << filePathName << std::endl;
-
 	this->vertices.clear();
 	this->normals.clear();
 	this->textureCoords.clear();
@@ -502,8 +527,8 @@ void	Scop::loadObjFile(std::string filePathName)
 		}
 		else if (lineType == "vn")
 		{
-			Normal normal;
-			iss >> normal.nx >> normal.ny >> normal.nz;
+			Vec3 normal;
+			iss >> normal.x >> normal.y >> normal.z;
 			this->normals.push_back(normal);
 		}
 		else if (lineType == "vt")
@@ -575,7 +600,6 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	if (textureCoords.size() == 0)
 	{
-		std::cout << "No texture coordinates found, using default texture coordinates" << std::endl;
 		textureCoords.resize(vertices.size());
 
 		for (size_t i = 0; i < vertices.size(); i++)
@@ -589,6 +613,26 @@ void	Scop::loadObjFile(std::string filePathName)
 	for (const auto& face : faces)
 		for (int i = 0; i < 3; ++i)
 			this->indices.push_back(face.vertexIndex[i]);
+
+	if (normals.size() == 0)
+	{
+		normals.resize(vertices.size());
+		for (int i = 0; i < indices.size(); i += 3)
+		{
+			Vec3 v0 = vertices[indices[i]];
+			Vec3 v1 = vertices[indices[i + 1]];
+			Vec3 v2 = vertices[indices[i + 2]];
+
+			Vec3 edge1 = v1 - v0;
+			Vec3 edge2 = v2 - v0;
+
+			Vec3 normal = Vec3::cross(edge1, edge2).normalize();
+
+			normals[indices[i]] = normal;
+			normals[indices[i + 1]] = normal;
+			normals[indices[i + 2]] = normal;
+		}
+	}
 
 	glGenVertexArrays(1, &this->VAO);
 	glGenBuffers(1, &this->VBO);
@@ -617,7 +661,7 @@ void	Scop::loadObjFile(std::string filePathName)
 	// Attribute 2: normals
 	glEnableVertexAttribArray(2);
 	glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
-	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(Normal), this->normals.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(Vec3), this->normals.data(), GL_STATIC_DRAW);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 
 	glBindVertexArray(0);
