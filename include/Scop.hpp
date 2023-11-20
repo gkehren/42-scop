@@ -56,6 +56,11 @@ class Scop
 		Vec3		lightColor;
 		Vec3		objectColor;
 
+		// gradient
+		bool		showGradient;
+		Vec3		gradientStartColor;
+		Vec3		gradientEndColor;
+
 		// soft transition
 		bool		transition;
 		bool		previousShowTextures;

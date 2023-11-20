@@ -40,14 +40,22 @@ const char* fragmentShaderSource = R"(
 	uniform vec3 objectColor;
 
 	uniform sampler2D textureSampler; // Texture sampler
-	uniform bool showLight;
+	uniform bool showLight; // Show light
 	uniform float transitionFactor; // Transition factor between texture and gradient
+	uniform bool showGradient; // Show gradient instead of texture
+	uniform vec3 gradientStartColor; // Gradient start color
+	uniform vec3 gradientEndColor; // Gradient end color
 
 	void main() {
 		vec3 result = vec3(0.0);
 
-		vec3 textureColor = texture(textureSampler, TexCoord).xyz;
-		result = mix(objectColor, textureColor, transitionFactor);
+		if (showGradient) {
+			float gradientFactor = (FragPos.y + 1.0) / 2.0;
+			result = mix(gradientStartColor, gradientEndColor, gradientFactor);
+		} else {
+			vec3 textureColor = texture(textureSampler, TexCoord).xyz;
+			result = mix(objectColor, textureColor, transitionFactor);
+		}
 
 		if (showLight) {
 			// Calculate lighting
@@ -189,6 +197,10 @@ Scop::Scop()
 	this->transitionStartTime = 0.0f;
 	this->transitionDuration = 1.0f;
 
+	this->showGradient = false;
+	this->gradientStartColor = Vec3(0.0f, 0.0f, 0.0f);
+	this->gradientEndColor = Vec3(1.0f, 1.0f, 1.0f);
+
 	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
 	this->loadbmpFile("/home/gkehren/42-scop/ressources/chaton.bmp");
 
@@ -282,6 +294,9 @@ void	Scop::run()
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "textureSampler"), 0);
 		glUniform1i(glGetUniformLocation(this->shaderProgram, "showLight"), this->showLight);
 		glUniform1f(glGetUniformLocation(this->shaderProgram, "transitionFactor"), this->transitionFactor);
+		glUniform1i(glGetUniformLocation(this->shaderProgram, "showGradient"), this->showGradient);
+		glUniform3fv(glGetUniformLocation(this->shaderProgram, "gradientStartColor"), 1, Vec3::value_ptr(this->gradientStartColor));
+		glUniform3fv(glGetUniformLocation(this->shaderProgram, "gradientEndColor"), 1, Vec3::value_ptr(this->gradientEndColor));
 
 		if (showWireframe)
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -430,9 +445,10 @@ void	Scop::updateUI()
 	ImGui::Checkbox("Light", &this->showLight);
 	ImGui::ColorEdit3("Object Color", &this->objectColor.x);
 	ImGui::ColorEdit3("Light Color", &this->lightColor.x);
+	ImGui::Checkbox("Gradient", &this->showGradient);
+	ImGui::ColorEdit3("Gradient Start Color", &this->gradientStartColor.x);
+	ImGui::ColorEdit3("Gradient End Color", &this->gradientEndColor.x);
 
-	ImGui::Text("Debug : %s = %s", this->showTextures ? "true" : "false", this->previousShowTextures ? "true" : "false");
-	ImGui::Text("TransitionFactor : %f", this->transitionFactor);
 	if (this->showTextures != this->previousShowTextures)
 	{
 		this->transitionStartTime = glfwGetTime();
