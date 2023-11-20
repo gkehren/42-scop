@@ -204,47 +204,8 @@ Scop::Scop()
 	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
 	this->loadbmpFile("/home/gkehren/42-scop/ressources/chaton.bmp");
 
-	// LOAD SHADER
-	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-	glCompileShader(vertexShader);
-
-	GLint success;
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		char infoLog[512];
-		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-		std::cout << "Error compiling vertex shader:\n" << infoLog << std::endl;
-	}
-
-	this->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-	glCompileShader(fragmentShader);
-
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		char infoLog[512];
-		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-		std::cout << "Error compiling fragment shader:\n" << infoLog << std::endl;
-	}
-
-	this->shaderProgram = glCreateProgram();
-	glAttachShader(this->shaderProgram, this->vertexShader);
-	glAttachShader(this->shaderProgram, this->fragmentShader);
-	glLinkProgram(this->shaderProgram);
-
-	glGetProgramiv(this->shaderProgram, GL_LINK_STATUS, &success);
-	if (!success)
-	{
-		char infoLog[512];
-		glGetProgramInfoLog(this->shaderProgram, 512, nullptr, infoLog);
-		std::cout << "Error linking shader program:\n" << infoLog << std::endl;
-	}
-
-	glDeleteShader(this->vertexShader);
-	glDeleteShader(this->fragmentShader);
+	if (this->loadShader() == -1)
+		return;
 }
 
 Scop::~Scop()
@@ -259,6 +220,54 @@ Scop::~Scop()
 
 	glfwDestroyWindow(this->window);
 	glfwTerminate();
+}
+
+int	Scop::loadShader()
+{
+	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+	glCompileShader(vertexShader);
+
+	GLint success;
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[512];
+		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
+		std::cout << "Error compiling vertex shader:\n" << infoLog << std::endl;
+		return -1;
+	}
+
+	this->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+	glCompileShader(fragmentShader);
+
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[512];
+		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
+		std::cout << "Error compiling fragment shader:\n" << infoLog << std::endl;
+		return -1;
+	}
+
+	this->shaderProgram = glCreateProgram();
+	glAttachShader(this->shaderProgram, this->vertexShader);
+	glAttachShader(this->shaderProgram, this->fragmentShader);
+	glLinkProgram(this->shaderProgram);
+
+	glGetProgramiv(this->shaderProgram, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[512];
+		glGetProgramInfoLog(this->shaderProgram, 512, nullptr, infoLog);
+		std::cout << "Error linking shader program:\n" << infoLog << std::endl;
+		return -1;
+	}
+
+	glDeleteShader(this->vertexShader);
+	glDeleteShader(this->fragmentShader);
+	return 0;
 }
 
 void	Scop::run()
@@ -432,7 +441,7 @@ void	Scop::updateUI()
 		ImGuiFileDialog::Instance()->Close();
 	}
 	if (ImGui::Button("Reset object"))
-		this->objectPosition = Vec3(1.0f, 1.0f, 1.0f);
+		this->objectPosition = Vec3(0.0f, 0.0f, 0.0f);
 	if (ImGui::Button("Reset camera"))
 	{
 		this->yaw = -90.0f;
