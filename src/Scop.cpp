@@ -202,7 +202,7 @@ Scop::Scop()
 	this->gradientEndColor = Vec3(1.0f, 1.0f, 1.0f);
 
 	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
-	this->loadbmpFile("/home/gkehren/42-scop/ressources/chaton.bmp");
+	this->loadbmpFile("/home/gkehren/42-scop/ressources/brick.bmp");
 
 	if (this->loadShader() == -1)
 		return;
@@ -428,10 +428,10 @@ void	Scop::updateUI()
 	ImGui::Text("Yaw : %.1f", this->yaw);
 	ImGui::Text("Pitch : %.1f", this->pitch);
 	// File Dialog
-	if (ImGui::Button("Open File"))
-		ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".obj", ".");
+	if (ImGui::Button("Load 3D Model"))
+		ImGuiFileDialog::Instance()->OpenDialog("ChooseObjDlgKey", "Choose File", ".obj", ".");
 
-	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+	if (ImGuiFileDialog::Instance()->Display("ChooseObjDlgKey"))
 	{
 		if (ImGuiFileDialog::Instance()->IsOk())
 		{
@@ -451,6 +451,18 @@ void	Scop::updateUI()
 	ImGui::SliderFloat("Rotation Speed", &this->rotationSpeed, 0.0f, 2.0f);
 	ImGui::Checkbox("Wireframe", &this->showWireframe);
 	ImGui::Checkbox("Texture", &this->showTextures);
+	if (ImGui::Button("Load Texture"))
+		ImGuiFileDialog::Instance()->OpenDialog("ChooseTextureDlgKey", "Choose File", ".bmp", ".");
+
+	if (ImGuiFileDialog::Instance()->Display("ChooseTextureDlgKey"))
+	{
+		if (ImGuiFileDialog::Instance()->IsOk())
+		{
+			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+			this->loadbmpFile(filePathName);
+		}
+		ImGuiFileDialog::Instance()->Close();
+	}
 	ImGui::Checkbox("Light", &this->showLight);
 	ImGui::ColorEdit3("Object Color", &this->objectColor.x);
 	ImGui::ColorEdit3("Light Color", &this->lightColor.x);
@@ -496,6 +508,9 @@ void	Scop::updateUI()
 
 void	Scop::loadbmpFile(std::string filePathName)
 {
+	glDeleteTextures(1, &this->textureID);
+	this->textureID = 0;
+
 	this->imageData = stbi_load(filePathName.c_str(), &this->imageWidth, &this->imageHeight, &this->imageChannels, 0);
 	if (!this->imageData)
 	{
