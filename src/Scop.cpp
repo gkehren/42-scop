@@ -179,7 +179,7 @@ Scop::Scop()
 	this->cameraUp = Vec3(0.0f, 1.0f, 0.0f);
 
 	this->view = Mat4::lookAt(this->cameraPos, this->cameraTarget, this->cameraUp);
-	this->projection = Mat4::perspective(glm::radians(45.0f), (float)this->windowWidth / (float)this->windowHeight, 0.1f, 100.0f);
+	this->projection = Mat4::perspective(toRadians(45.0f), (float)this->windowWidth / (float)this->windowHeight, 0.1f, 100.0f);
 	this->model = Mat4();
 
 	this->lightColor = Vec3(1.0f, 1.0f, 1.0f);
@@ -368,9 +368,9 @@ void	Scop::cameraMovement()
 		this->pitch = -89.0f;
 
 	Vec3 front(0.0f, 0.0f, 0.0f);
-	front.x = cos(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
-	front.y = sin(glm::radians(this->pitch));
-	front.z = sin(glm::radians(this->yaw)) * cos(glm::radians(this->pitch));
+	front.x = cos(toRadians(this->yaw)) * cos(toRadians(this->pitch));
+	front.y = sin(toRadians(this->pitch));
+	front.z = sin(toRadians(this->yaw)) * cos(toRadians(this->pitch));
 	this->cameraFront = Vec3::normalize(front);
 
 	this->cameraPos = this->cameraTarget - this->cameraFront * this->distanceFromCube;
@@ -709,7 +709,6 @@ void	Scop::loadObjFile(std::string filePathName)
 	cameraTarget = calculateModelCenterOffset();
 }
 
-
 Vec3 Scop::calculateModelCenterOffset()
 {
 	Vec3 min = Vec3(FLT_MAX, FLT_MAX, FLT_MAX);
@@ -724,4 +723,9 @@ Vec3 Scop::calculateModelCenterOffset()
 	Vec3 center = (min + max) * 0.5f;
 
 	return -center;
+}
+
+float	Scop::toRadians(float degrees)
+{
+	return degrees * M_PI / 180.0f;
 }

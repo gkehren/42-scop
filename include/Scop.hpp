@@ -3,9 +3,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl_glfw.h"
 #include "../imgui/imgui_impl_opengl3.h"
@@ -107,4 +104,5 @@ class Scop
 		void		loadObjFile(std::string filePathName);
 		void		loadbmpFile(std::string filePathName);
 		Vec3		calculateModelCenterOffset();
+		float		toRadians(float degrees);
 };

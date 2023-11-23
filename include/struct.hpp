@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cmath>
-#include <GL/glew.h>
 
 struct Vec3 {
 	float x, y, z;
