@@ -117,7 +117,7 @@ Scop::Scop()
 	if (!glfwInit())
 	{
 		std::cerr << "Error while initializing GLFW" << std::endl;
-		return;
+		throw std::runtime_error("Error while initializing GLFW");
 	}
 
 	glfwSetErrorCallback(errorCallback);
@@ -136,7 +136,7 @@ Scop::Scop()
 	{
 		std::cerr << "Error while creating GLFW window" << std::endl;
 		glfwTerminate();
-		return;
+		throw std::runtime_error("Error while creating GLFW window");
 	}
 
 	glfwMakeContextCurrent(this->window);
@@ -146,7 +146,7 @@ Scop::Scop()
 	{
 		std::cerr << "Error while initializing GLEW" << std::endl;
 		glfwTerminate();
-		return;
+		throw std::runtime_error("Error while initializing GLEW");
 	}
 
 	// Initialize ImGui
@@ -209,7 +209,7 @@ Scop::Scop()
 	this->loadbmpFile("/home/gkehren/42-scop/ressources/brick.bmp");
 
 	if (this->loadShader() == -1)
-		return;
+		throw std::runtime_error("Error while loading shaders");
 }
 
 Scop::~Scop()
@@ -217,6 +217,9 @@ Scop::~Scop()
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
+	glDeleteBuffers(1, &textureVBO);
+	glDeleteBuffers(1, &normalVBO);
+	glDeleteTextures(1, &textureID);
 
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
@@ -519,7 +522,7 @@ void	Scop::loadbmpFile(std::string filePathName)
 	if (!this->imageData)
 	{
 		std::cerr << "Error: could not load texture" << std::endl;
-		return ;
+		throw std::runtime_error("Error: could not load texture");
 	}
 
 	glGenTextures(1, &this->textureID);
@@ -543,7 +546,7 @@ void	Scop::loadObjFile(std::string filePathName)
 	if (!objFile.is_open())
 	{
 		std::cerr << "Error: could not open file" << std::endl;
-		return ;
+		throw std::runtime_error("Error: could not open file");
 	}
 
 	this->vertices.clear();

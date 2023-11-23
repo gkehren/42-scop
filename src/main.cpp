@@ -2,9 +2,14 @@
 
 int main()
 {
-	Scop scop;
+	try {
+		Scop scop;
 
-	scop.run();
+		scop.run();
+	} catch (std::exception& e) {
+		std::cerr << e.what() << std::endl;
+		return 1;
+	}
 
 	return 0;
 }
