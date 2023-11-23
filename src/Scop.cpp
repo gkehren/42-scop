@@ -1,4 +1,5 @@
 #include "../include/Scop.hpp"
+#include <stdexcept>
 #define STB_IMAGE_IMPLEMENTATION
 #include "../imgui/stb_image.h"
 
@@ -208,8 +209,7 @@ Scop::Scop()
 	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
 	this->loadbmpFile("/home/gkehren/42-scop/ressources/brick.bmp");
 
-	if (this->loadShader() == -1)
-		throw std::runtime_error("Error while loading shaders");
+	this->loadShader();
 }
 
 Scop::~Scop()
@@ -229,7 +229,7 @@ Scop::~Scop()
 	glfwTerminate();
 }
 
-int	Scop::loadShader()
+void	Scop::loadShader()
 {
 	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
@@ -241,8 +241,8 @@ int	Scop::loadShader()
 	{
 		char infoLog[512];
 		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-		std::cerr << "Error compiling vertex shader:\n" << infoLog << std::endl;
-		return -1;
+		std::string errorMessage = "Error compiling vertex shader:\n" + std::string(infoLog);
+		throw std::runtime_error(errorMessage);
 	}
 
 	this->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -254,8 +254,8 @@ int	Scop::loadShader()
 	{
 		char infoLog[512];
 		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-		std::cerr << "Error compiling fragment shader:\n" << infoLog << std::endl;
-		return -1;
+		std::string errorMessage = "Error compiling fragment shader:\n" + std::string(infoLog);
+		throw std::runtime_error(errorMessage);
 	}
 
 	this->shaderProgram = glCreateProgram();
@@ -268,13 +268,12 @@ int	Scop::loadShader()
 	{
 		char infoLog[512];
 		glGetProgramInfoLog(this->shaderProgram, 512, nullptr, infoLog);
-		std::cerr << "Error linking shader program:\n" << infoLog << std::endl;
-		return -1;
+		std::string errorMessage = "Error linking shader program:\n" + std::string(infoLog);
+		throw std::runtime_error(errorMessage);
 	}
 
 	glDeleteShader(this->vertexShader);
 	glDeleteShader(this->fragmentShader);
-	return 0;
 }
 
 void	Scop::run()

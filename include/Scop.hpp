@@ -96,7 +96,7 @@ class Scop
 		std::vector<Face>			faces;
 		std::vector<unsigned int>	indices;
 
-		int			loadShader();
+		void		loadShader();
 		void		cameraMovement();
 		void		objectMovement();
 		void		updateUI();
