@@ -59,18 +59,22 @@ const char* fragmentShaderSource = R"(
 
 		if (showLight) {
 			// Calculate lighting
-			vec3 ambient = 0.1 * lightColor;
 			vec3 norm = normalize(Normal);
 			vec3 lightDir = normalize(lightPos - FragPos);
-			float diff = max(dot(norm, lightDir), 0.0);
-			vec3 diffuse = diff * lightColor;
 
+			// Diffuse shading
+			float diff = max(dot(norm, lightDir), 0.0);
+
+			// Specular shading
 			vec3 viewDir = normalize(viewPos - FragPos);
 			vec3 reflectDir = reflect(-lightDir, norm);
-			float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
-			vec3 specular = spec * lightColor;
+			float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
 
-			result = result * (ambient + diffuse + specular);
+			// Combine results
+			vec3 ambient = 0.1 * objectColor;
+			vec3 diffuse = diff * lightColor;
+			vec3 specular = spec * lightColor;
+			result = (ambient + diffuse + specular) * result;
 		}
 
 		FragColor = vec4(result, 1.0);
@@ -171,7 +175,7 @@ Scop::Scop()
 	this->fps = 0.0f;
 	this->showTextures = false;
 	this->showWireframe = false;
-	this->showLight = true;
+	this->showLight = false;
 
 	this->cameraPos = Vec3(0.0f, 0.0f, 3.0f);
 	this->cameraFront = Vec3(0.0f, 0.0f, -1.0f);
@@ -197,7 +201,7 @@ Scop::Scop()
 	this->transitionStartTime = 0.0f;
 	this->transitionDuration = 1.0f;
 
-	this->showGradient = false;
+	this->showGradient = true;
 	this->gradientStartColor = Vec3(0.0f, 0.0f, 0.0f);
 	this->gradientEndColor = Vec3(1.0f, 1.0f, 1.0f);
 
@@ -591,14 +595,15 @@ void	Scop::loadObjFile(std::string filePathName)
 				std::string indexToken;
 
 				getline(tokenStream, indexToken, '/');
-				face.vertexIndex[i] = std::stoi(indexToken) - 1;
+				if (!indexToken.empty())
+					face.vertexIndex[i] = std::stoi(indexToken) - 1;
 
-				if (getline(tokenStream, indexToken, '/'))
+				if (getline(tokenStream, indexToken, '/') && !indexToken.empty())
 					face.textureCoordIndex[i] = std::stoi(indexToken) - 1;
 				else
 					face.textureCoordIndex[i] = -1;
 
-				if (getline(tokenStream, indexToken))
+				if (getline(tokenStream, indexToken) && !indexToken.empty())
 					face.normalIndex[i] = std::stoi(indexToken) - 1;
 				else
 					face.normalIndex[i] = -1;
@@ -617,14 +622,15 @@ void	Scop::loadObjFile(std::string filePathName)
 				std::string indexToken;
 
 				getline(tokenStream, indexToken, '/');
-				secondFace.vertexIndex[2] = std::stoi(indexToken) - 1;
+				if (!indexToken.empty())
+					secondFace.vertexIndex[2] = std::stoi(indexToken) - 1;
 
-				if (getline(tokenStream, indexToken, '/'))
+				if (getline(tokenStream, indexToken, '/') && !indexToken.empty())
 					secondFace.textureCoordIndex[2] = std::stoi(indexToken) - 1;
 				else
 					secondFace.textureCoordIndex[2] = -1;
 
-				if (getline(tokenStream, indexToken))
+				if (getline(tokenStream, indexToken) && !indexToken.empty())
 					secondFace.normalIndex[2] = std::stoi(indexToken) - 1;
 				else
 					secondFace.normalIndex[2] = -1;
@@ -656,7 +662,7 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	if (normals.size() == 0)
 	{
-		normals.resize(vertices.size());
+		normals.resize(vertices.size(), Vec3(0.0f, 0.0f, 0.0f));
 		for (int i = 0; i < indices.size(); i += 3)
 		{
 			Vec3 v0 = vertices[indices[i]];
@@ -666,12 +672,15 @@ void	Scop::loadObjFile(std::string filePathName)
 			Vec3 edge1 = v1 - v0;
 			Vec3 edge2 = v2 - v0;
 
-			Vec3 normal = Vec3::cross(edge1, edge2).normalize();
+			Vec3 normal = Vec3::cross(edge1, edge2);
 
 			normals[indices[i]] = normal;
 			normals[indices[i + 1]] = normal;
 			normals[indices[i + 2]] = normal;
 		}
+
+		for (auto& normal : normals)
+			normal = normal.normalize();
 	}
 
 	glGenVertexArrays(1, &this->VAO);
