@@ -234,7 +234,7 @@ int	Scop::loadShader()
 	{
 		char infoLog[512];
 		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-		std::cout << "Error compiling vertex shader:\n" << infoLog << std::endl;
+		std::cerr << "Error compiling vertex shader:\n" << infoLog << std::endl;
 		return -1;
 	}
 
@@ -247,7 +247,7 @@ int	Scop::loadShader()
 	{
 		char infoLog[512];
 		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-		std::cout << "Error compiling fragment shader:\n" << infoLog << std::endl;
+		std::cerr << "Error compiling fragment shader:\n" << infoLog << std::endl;
 		return -1;
 	}
 
@@ -261,7 +261,7 @@ int	Scop::loadShader()
 	{
 		char infoLog[512];
 		glGetProgramInfoLog(this->shaderProgram, 512, nullptr, infoLog);
-		std::cout << "Error linking shader program:\n" << infoLog << std::endl;
+		std::cerr << "Error linking shader program:\n" << infoLog << std::endl;
 		return -1;
 	}
 
@@ -514,7 +514,7 @@ void	Scop::loadbmpFile(std::string filePathName)
 	this->imageData = stbi_load(filePathName.c_str(), &this->imageWidth, &this->imageHeight, &this->imageChannels, 0);
 	if (!this->imageData)
 	{
-		std::cout << "Error: could not load texture" << std::endl;
+		std::cerr << "Error: could not load texture" << std::endl;
 		return ;
 	}
 
@@ -538,7 +538,7 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	if (!objFile.is_open())
 	{
-		std::cout << "Error: could not open file" << std::endl;
+		std::cerr << "Error: could not open file" << std::endl;
 		return ;
 	}
 
