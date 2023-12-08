@@ -6,7 +6,7 @@
 #    By: gkehren <gkehren@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/07/30 22:16:55 by gkehren           #+#    #+#              #
-#    Updated: 2023/11/29 23:02:04 by gkehren          ###   ########.fr        #
+#    Updated: 2023/12/08 18:50:15 by gkehren          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -17,6 +17,7 @@ NAME:= scop
 CC:=c++
 SRCPATH:=src/
 INCLUDES:= -I includes/ -I imgui/
+LIBPATH:=lib/
 CCHPATH:=obj/
 CFLAGS:=-std=c++11
 # ==================
@@ -42,7 +43,7 @@ all: ${NAME}
 
 ${NAME}: ${OBJ}
 	@echo ${CYAN} " - Compiling $@" $(RED)
-	@${CC} ${CFLAGS} ${SRC} -o ${NAME} -lGLEW -lGL -lglfw
+	@${CC} ${CFLAGS} ${SRC} -o ${NAME} -L$(LIBPATH) -lGLEW -lGL -lglfw
 	@echo $(GREEN) " - OK" $(EOC)
 
 ${CCHPATH}%.o: ${SRCPATH}%.cpp
