@@ -6,11 +6,11 @@
 #    By: gkehren <gkehren@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/07/30 22:16:55 by gkehren           #+#    #+#              #
-#    Updated: 2023/12/25 19:42:59 by gkehren          ###   ########.fr        #
+#    Updated: 2023/12/25 20:18:41 by gkehren          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
-FILES:= main Scop shader
+FILES:= main Scop shader model utils
 NAME:= scop
 
 # ------------------
