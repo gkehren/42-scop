@@ -3,85 +3,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../imgui/stb_image.h"
 
-const char* vertexShaderSource = R"(
-	#version 420 core
-
-	layout(location = 0) in vec3 inPosition;
-	layout(location = 1) in vec2 inTexCoord;
-	layout(location = 2) in vec3 inNormal;
-
-	out vec2 TexCoord;
-	out vec3 FragPos;
-	out vec3 Normal;
-
-	uniform mat4 model;
-	uniform mat4 view;
-	uniform mat4 projection;
-
-	void main() {
-		gl_Position = projection * view * model * vec4(inPosition, 1.0);
-		TexCoord = inTexCoord;
-		FragPos = vec3(model * vec4(inPosition, 1.0));
-		Normal = mat3(transpose(inverse(model))) * inNormal;
-	}
-)";
-
-const char* fragmentShaderSource = R"(
-	#version 420 core
-
-	in vec2 TexCoord;
-	in vec3 FragPos;
-	in vec3 Normal;
-
-	out vec4 FragColor;
-
-	uniform vec3 lightPos;
-	uniform vec3 viewPos;
-	uniform vec3 lightColor;
-	uniform vec3 objectColor;
-
-	uniform sampler2D textureSampler; // Texture sampler
-	uniform bool showLight; // Show light
-	uniform float transitionFactor; // Transition factor between texture and gradient
-	uniform bool showGradient; // Show gradient instead of texture
-	uniform vec3 gradientStartColor; // Gradient start color
-	uniform vec3 gradientEndColor; // Gradient end color
-
-	void main() {
-		vec3 result = vec3(0.0);
-
-		if (showGradient) {
-			float gradientFactor = (FragPos.y + 1.0) / 2.0;
-			result = mix(gradientStartColor, gradientEndColor, gradientFactor);
-		} else {
-			vec3 textureColor = texture(textureSampler, TexCoord).xyz;
-			result = mix(objectColor, textureColor, transitionFactor);
-		}
-
-		if (showLight) {
-			// Calculate lighting
-			vec3 norm = normalize(Normal);
-			vec3 lightDir = normalize(lightPos - FragPos);
-
-			// Diffuse shading
-			float diff = max(dot(norm, lightDir), 0.0);
-
-			// Specular shading
-			vec3 viewDir = normalize(viewPos - FragPos);
-			vec3 reflectDir = reflect(-lightDir, norm);
-			float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-
-			// Combine results
-			vec3 ambient = 0.1 * objectColor;
-			vec3 diffuse = diff * lightColor;
-			vec3 specular = spec * lightColor;
-			result = (ambient + diffuse + specular) * result;
-		}
-
-		FragColor = vec4(result, 1.0);
-	}
-)";
-
 Mat4::Mat4(const Mat3& mat3) {
 	for (int i = 0; i < 3; i++)
 		for (int j = 0; j < 3; j++)
@@ -114,7 +35,7 @@ void	Scop::scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 
 Scop::Scop()
 {
-	// Initialize GLFW and OpenGL
+	// Initialize GLFW
 	if (!glfwInit())
 	{
 		std::cerr << "Error while initializing GLFW" << std::endl;
@@ -123,15 +44,13 @@ Scop::Scop()
 
 	glfwSetErrorCallback(errorCallback);
 
-	// Use OpenGL 4.2 Core Profile
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	// Use OpenGL 3.3 Core Profile
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
 	// Create window
 	this->windowWidth = 1920;
 	this->windowHeight = 1080;
-
 	this->window = glfwCreateWindow(this->windowWidth, this->windowHeight, "scop", nullptr, nullptr);
 	if (!this->window)
 	{
@@ -206,14 +125,16 @@ Scop::Scop()
 	this->gradientStartColor = Vec3(0.0f, 0.0f, 0.0f);
 	this->gradientEndColor = Vec3(1.0f, 1.0f, 1.0f);
 
-	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
-	this->loadbmpFile("/home/gkehren/42-scop/ressources/brick.bmp");
-
 	this->loadShader();
+
+	this->loadTexture("/home/gkehren/42-scop/ressources/brick.bmp");
+	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
 }
 
 Scop::~Scop()
 {
+	glDeleteProgram(shaderProgram);
+
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
@@ -227,53 +148,6 @@ Scop::~Scop()
 
 	glfwDestroyWindow(this->window);
 	glfwTerminate();
-}
-
-void	Scop::loadShader()
-{
-	this->vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-	glCompileShader(vertexShader);
-
-	GLint success;
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		char infoLog[512];
-		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-		std::string errorMessage = "Error compiling vertex shader:\n" + std::string(infoLog);
-		throw std::runtime_error(errorMessage);
-	}
-
-	this->fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-	glCompileShader(fragmentShader);
-
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		char infoLog[512];
-		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-		std::string errorMessage = "Error compiling fragment shader:\n" + std::string(infoLog);
-		throw std::runtime_error(errorMessage);
-	}
-
-	this->shaderProgram = glCreateProgram();
-	glAttachShader(this->shaderProgram, this->vertexShader);
-	glAttachShader(this->shaderProgram, this->fragmentShader);
-	glLinkProgram(this->shaderProgram);
-
-	glGetProgramiv(this->shaderProgram, GL_LINK_STATUS, &success);
-	if (!success)
-	{
-		char infoLog[512];
-		glGetProgramInfoLog(this->shaderProgram, 512, nullptr, infoLog);
-		std::string errorMessage = "Error linking shader program:\n" + std::string(infoLog);
-		throw std::runtime_error(errorMessage);
-	}
-
-	glDeleteShader(this->vertexShader);
-	glDeleteShader(this->fragmentShader);
 }
 
 void	Scop::run()
@@ -321,7 +195,6 @@ void	Scop::run()
 		glBindVertexArray(this->VAO);
 		glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-		glUseProgram(0);
 
 		this->updateUI();
 
@@ -465,7 +338,7 @@ void	Scop::updateUI()
 		if (ImGuiFileDialog::Instance()->IsOk())
 		{
 			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-			this->loadbmpFile(filePathName);
+			this->loadTexture(filePathName.c_str());
 		}
 		ImGuiFileDialog::Instance()->Close();
 	}
@@ -512,13 +385,14 @@ void	Scop::updateUI()
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void	Scop::loadbmpFile(std::string filePathName)
+void	Scop::loadTexture(const char* filename)
 {
 	glDeleteTextures(1, &this->textureID);
 	this->textureID = 0;
 
-	this->imageData = stbi_load(filePathName.c_str(), &this->imageWidth, &this->imageHeight, &this->imageChannels, 0);
-	if (!this->imageData)
+	int	width, height, channels;
+	unsigned char* data = stbi_load(filename, &width, &height, &channels, 0);
+	if (!data)
 	{
 		std::cerr << "Error: could not load texture" << std::endl;
 		throw std::runtime_error("Error: could not load texture");
@@ -532,10 +406,10 @@ void	Scop::loadbmpFile(std::string filePathName)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, this->imageWidth, this->imageHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, this->imageData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	stbi_image_free(this->imageData);
+	stbi_image_free(data);
 }
 
 void	Scop::loadObjFile(std::string filePathName)
@@ -646,18 +520,6 @@ void	Scop::loadObjFile(std::string filePathName)
 		}
 	}
 
-	if (textureCoords.size() == 0)
-	{
-		textureCoords.resize(vertices.size());
-
-		for (size_t i = 0; i < vertices.size(); i++)
-		{
-			float u = std::atan2(vertices[i].z, vertices[i].x) / (2.0f * M_PI) + 0.5f;
-			float v = asinf(vertices[i].y) / M_PI + 0.5f;
-			textureCoords[i] = { u, v };
-		}
-	}
-
 	for (const auto& face : faces)
 		for (int i = 0; i < 3; ++i)
 			this->indices.push_back(face.vertexIndex[i]);
@@ -685,6 +547,12 @@ void	Scop::loadObjFile(std::string filePathName)
 			normal = normal.normalize();
 	}
 
+	if (textureCoords.size() == 0)
+	{
+		for (const auto& vertice : vertices)
+			textureCoords.push_back({ vertice.x, vertice.y });
+	}
+
 	glGenVertexArrays(1, &this->VAO);
 	glGenBuffers(1, &this->VBO);
 	glGenBuffers(1, &this->EBO);
@@ -695,7 +563,7 @@ void	Scop::loadObjFile(std::string filePathName)
 
 	// Fill EBO with indices data
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices.size() * sizeof(unsigned int), this->indices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices.size() * sizeof(uint), this->indices.data(), GL_STATIC_DRAW);
 
 	// Attribute 0: vertex position
 	glEnableVertexAttribArray(0);

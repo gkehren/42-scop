@@ -10,6 +10,8 @@
 #include "../imgui/imgui_impl_glfw.h"
 #include "../imgui/imgui_impl_opengl3.h"
 
+typedef unsigned int uint;
+
 class Scop
 {
 	public:
@@ -69,39 +71,34 @@ class Scop
 		float		rotationAngle;
 		Vec3		objectPosition;
 
-		GLuint		VAO;
-		GLuint		VBO;
-		GLuint		EBO;
+		uint		VAO;
+		uint		VBO;
+		uint		EBO;
 
 		bool		showTextures;
 		bool		showWireframe;
 		bool		showLight;
 
-		// Texture
-		unsigned char	*imageData;
-		int				imageWidth;
-		int				imageHeight;
-		int				imageChannels;
-		GLuint			textureID;
+		uint			textureID;
 
-		GLuint			vertexShader;
-		GLuint			fragmentShader;
-		GLuint			shaderProgram;
-		GLuint			textureVBO;
-		GLuint			normalVBO;
+		uint			vertexShader;
+		uint			fragmentShader;
+		uint			shaderProgram;
+		uint			textureVBO;
+		uint			normalVBO;
 
 		std::vector<Vec3>			vertices;
 		std::vector<Vec3>			normals;
 		std::vector<TextureCoord>	textureCoords;
 		std::vector<Face>			faces;
-		std::vector<unsigned int>	indices;
+		std::vector<uint>			indices;
 
 		void		loadShader();
 		void		cameraMovement();
 		void		objectMovement();
 		void		updateUI();
 		void		loadObjFile(std::string filePathName);
-		void		loadbmpFile(std::string filePathName);
+		void		loadTexture(const char* filename);
 		Vec3		calculateModelCenterOffset();
 		float		toRadians(float degrees);
 };
