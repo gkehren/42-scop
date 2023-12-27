@@ -25,7 +25,7 @@ void main() {
 		float gradientFactor = (FragPos.y + 1.0) / 2.0;
 		result = mix(gradientStartColor, gradientEndColor, gradientFactor);
 	} else {
-		vec3 textureColor = texture(textureSampler, TexCoord).xyz;
+		vec3 textureColor = texture(textureSampler, TexCoord).rgb;
 		result = mix(objectColor, textureColor, transitionFactor);
 	}
 

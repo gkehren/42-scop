@@ -133,7 +133,7 @@ Scop::~Scop()
 
 void	Scop::run()
 {
-	while (!glfwWindowShouldClose(this->window))
+	while (!glfwWindowShouldClose(this->window) && glfwGetKey(this->window, GLFW_KEY_ESCAPE) != GLFW_PRESS)
 	{
 		glfwPollEvents();
 

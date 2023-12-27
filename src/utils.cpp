@@ -114,8 +114,10 @@ void	Scop::loadTexture(const char* filename)
 	glGenTextures(1, &this->textureID);
 	glBindTexture(GL_TEXTURE_2D, this->textureID);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 	stbi_image_free(data);
@@ -154,12 +156,12 @@ void	Scop::loadObjFile(const char* filePathName)
 			iss >> vertex.x >> vertex.y >> vertex.z;
 			this->vertex_postitions.push_back(vertex);
 		}
-		else if (type == "vt")
-		{
-			TextureCoord texture;
-			iss >> texture.u >> texture.v;
-			this->vertex_texcoords.push_back(texture);
-		}
+		//else if (type == "vt")
+		//{
+		//	TextureCoord texture;
+		//	iss >> texture.u >> texture.v;
+		//	this->vertex_texcoords.push_back(texture);
+		//}
 		else if (type == "vn")
 		{
 			Vec3 normal;
@@ -202,6 +204,21 @@ void	Scop::loadObjFile(const char* filePathName)
 		}
 	}
 	objFile.close();
+
+	if (this->vertex_texcoords.empty())
+	{
+		for (uint i = 0; i < this->indices.size(); i+= 3)
+		{
+			float u = indices[i];
+			float v = indices[i + 1];
+			this->vertex_texcoords.push_back({ u, v });
+		}
+	}
+
+	std::cout << "Number of vertices: " << this->vertex_postitions.size() << std::endl;
+	std::cout << "Number of texture coordinates: " << this->vertex_texcoords.size() << std::endl;
+	std::cout << "Number of normals: " << this->vertex_normals.size() << std::endl;
+	std::cout << "Number of indices: " << this->indices.size() << std::endl;
 
 	createBuffersAndArrays();
 }
