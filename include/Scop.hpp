@@ -71,33 +71,33 @@ class Scop
 		float		rotationAngle;
 		Vec3		objectPosition;
 
-		uint		VAO;
-		uint		VBO;
-		uint		EBO;
-
 		bool		showTextures;
 		bool		showWireframe;
 		bool		showLight;
 
-		uint			textureID;
+		uint		textureID;
 
-		uint			vertexShader;
-		uint			fragmentShader;
-		uint			shaderProgram;
-		uint			textureVBO;
-		uint			normalVBO;
+		uint		vertexShader;
+		uint		fragmentShader;
+		uint		shaderProgram;
 
-		std::vector<Vec3>			vertices;
-		std::vector<Vec3>			normals;
-		std::vector<TextureCoord>	textureCoords;
-		std::vector<Face>			faces;
+		uint		VBO; // vertex buffer object
+		uint		EBO; // element buffer object
+		uint		VAO; // vertex array object
+		uint		textureVBO; // texture vertex buffer object
+		uint		normalVBO; // normal vertex buffer object
+
+		std::vector<Vec3>			vertex_postitions;
+		std::vector<TextureCoord>	vertex_texcoords;
+		std::vector<Vec3>			vertex_normals;
 		std::vector<uint>			indices;
 
 		void		loadShader();
 		void		cameraMovement();
 		void		objectMovement();
 		void		updateUI();
-		void		loadObjFile(std::string filePathName);
+		void		createBuffersAndArrays();
+		void		loadObjFile(const char* filePathName);
 		void		loadTexture(const char* filename);
 		Vec3		calculateModelCenterOffset();
 		float		toRadians(float degrees);

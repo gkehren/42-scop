@@ -110,7 +110,7 @@ Vec3 Scop::calculateModelCenterOffset()
 	Vec3 min = Vec3(FLT_MAX, FLT_MAX, FLT_MAX);
 	Vec3 max = Vec3(-FLT_MAX, -FLT_MAX, -FLT_MAX);
 
-	for (const Vec3& vertex : vertices)
+	for (const Vec3& vertex : vertex_postitions)
 	{
 		min = Vec3::min(min, vertex);
 		max = Vec3::max(max, vertex);

@@ -6,7 +6,7 @@
 #    By: gkehren <gkehren@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/07/30 22:16:55 by gkehren           #+#    #+#              #
-#    Updated: 2023/12/25 20:18:41 by gkehren          ###   ########.fr        #
+#    Updated: 2023/12/26 23:56:34 by gkehren          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,7 +19,7 @@ SRCPATH:=src/
 INCLUDES:= -I includes/ -I imgui/
 LIBPATH:=lib/
 CCHPATH:=obj/
-CFLAGS:=-std=c++11
+CFLAGS:=-std=c++11 -g3 -O2
 # ==================
 
 # ----- Colors -----

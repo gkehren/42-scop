@@ -298,8 +298,9 @@ struct TextureCoord {
 	float u, v;
 };
 
-struct Face {
-	int vertexIndex[4];
-	int normalIndex[4];
-	int textureCoordIndex[4];
+struct Vertex
+{
+	Vec3			position;
+	Vec3			normal;
+	TextureCoord	texture;
 };

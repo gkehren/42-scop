@@ -28,7 +28,7 @@ void	Scop::updateUI()
 		if (ImGuiFileDialog::Instance()->IsOk())
 		{
 			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-			this->loadObjFile(filePathName);
+			this->loadObjFile(filePathName.c_str());
 		}
 		ImGuiFileDialog::Instance()->Close();
 	}
@@ -113,21 +113,17 @@ void	Scop::loadTexture(const char* filename)
 
 	glGenTextures(1, &this->textureID);
 	glBindTexture(GL_TEXTURE_2D, this->textureID);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 	stbi_image_free(data);
 }
 
-void	Scop::loadObjFile(std::string filePathName)
+void	Scop::loadObjFile(const char* filePathName)
 {
-	std::ifstream objFile(filePathName);
+	std::ifstream objFile(filePathName, std::ios::in);
 
 	if (!objFile.is_open())
 	{
@@ -135,14 +131,13 @@ void	Scop::loadObjFile(std::string filePathName)
 		throw std::runtime_error("Error: could not open file");
 	}
 
-	this->vertices.clear();
-	this->normals.clear();
-	this->textureCoords.clear();
-	this->faces.clear();
+	this->vertex_postitions.clear();
+	this->vertex_texcoords.clear();
+	this->vertex_normals.clear();
 	this->indices.clear();
-	glDeleteVertexArrays(1, &this->VAO);
 	glDeleteBuffers(1, &this->VBO);
 	glDeleteBuffers(1, &this->EBO);
+	glDeleteVertexArrays(1, &this->VAO);
 	glDeleteBuffers(1, &this->textureVBO);
 	glDeleteBuffers(1, &this->normalVBO);
 
@@ -150,33 +145,33 @@ void	Scop::loadObjFile(std::string filePathName)
 	while (std::getline(objFile, line))
 	{
 		std::istringstream iss(line);
-		std::string lineType;
-		iss >> lineType;
-		if (lineType == "v")
+		std::string type;
+		iss >> type;
+
+		if (type == "v")
 		{
 			Vec3 vertex;
 			iss >> vertex.x >> vertex.y >> vertex.z;
-			this->vertices.push_back(vertex);
+			this->vertex_postitions.push_back(vertex);
 		}
-		else if (lineType == "vn")
+		else if (type == "vt")
+		{
+			TextureCoord texture;
+			iss >> texture.u >> texture.v;
+			this->vertex_texcoords.push_back(texture);
+		}
+		else if (type == "vn")
 		{
 			Vec3 normal;
 			iss >> normal.x >> normal.y >> normal.z;
-			this->normals.push_back(normal);
+			this->vertex_normals.push_back(normal);
 		}
-		else if (lineType == "vt")
+		else if (type == "f")
 		{
-			TextureCoord textureCoord;
-			iss >> textureCoord.u >> textureCoord.v;
-			this->textureCoords.push_back(textureCoord);
-		}
-		else if (lineType == "f")
-		{
-			Face face;
-			char slash;
+			uint vp_index[3], vt_index[3], vn_index[3];
 			std::string token;
 
-			for (int i = 0; i < 3; ++i)
+			for (uint i = 0; i < 3; ++i)
 			{
 				iss >> token;
 
@@ -185,120 +180,67 @@ void	Scop::loadObjFile(std::string filePathName)
 
 				getline(tokenStream, indexToken, '/');
 				if (!indexToken.empty())
-					face.vertexIndex[i] = std::stoi(indexToken) - 1;
+					vp_index[i] = std::stoi(indexToken) - 1;
 
 				if (getline(tokenStream, indexToken, '/') && !indexToken.empty())
-					face.textureCoordIndex[i] = std::stoi(indexToken) - 1;
-				else
-					face.textureCoordIndex[i] = -1;
+					vt_index[i] = std::stoi(indexToken) - 1;
 
-				if (getline(tokenStream, indexToken) && !indexToken.empty())
-					face.normalIndex[i] = std::stoi(indexToken) - 1;
-				else
-					face.normalIndex[i] = -1;
+				if (getline(tokenStream, indexToken, '/') && !indexToken.empty())
+					vn_index[i] = std::stoi(indexToken) - 1;
 			}
 
-			faces.push_back(face);
+			this->indices.push_back(vp_index[0]);
+			this->indices.push_back(vp_index[1]);
+			this->indices.push_back(vp_index[2]);
 
 			if (iss >> token)
 			{
-				Face secondFace;
-				secondFace.vertexIndex[0] = face.vertexIndex[0];
-				secondFace.textureCoordIndex[0] = face.textureCoordIndex[0];
-				secondFace.normalIndex[0] = face.normalIndex[0];
-
-				std::istringstream tokenStream(token);
-				std::string indexToken;
-
-				getline(tokenStream, indexToken, '/');
-				if (!indexToken.empty())
-					secondFace.vertexIndex[2] = std::stoi(indexToken) - 1;
-
-				if (getline(tokenStream, indexToken, '/') && !indexToken.empty())
-					secondFace.textureCoordIndex[2] = std::stoi(indexToken) - 1;
-				else
-					secondFace.textureCoordIndex[2] = -1;
-
-				if (getline(tokenStream, indexToken) && !indexToken.empty())
-					secondFace.normalIndex[2] = std::stoi(indexToken) - 1;
-				else
-					secondFace.normalIndex[2] = -1;
-
-				secondFace.vertexIndex[1] = face.vertexIndex[2];
-				secondFace.textureCoordIndex[1] = face.textureCoordIndex[2];
-				secondFace.normalIndex[1] = face.normalIndex[2];
-
-				faces.push_back(secondFace);
+				this->indices.push_back(vp_index[0]);
+				this->indices.push_back(vp_index[2]);
+				this->indices.push_back(std::stoi(token) - 1);
 			}
 		}
 	}
+	objFile.close();
 
-	for (const auto& face : faces)
-		for (int i = 0; i < 3; ++i)
-			this->indices.push_back(face.vertexIndex[i]);
+	createBuffersAndArrays();
+}
 
-	if (normals.size() == 0)
-	{
-		normals.resize(vertices.size(), Vec3(0.0f, 0.0f, 0.0f));
-		for (int i = 0; i < indices.size(); i += 3)
-		{
-			Vec3 v0 = vertices[indices[i]];
-			Vec3 v1 = vertices[indices[i + 1]];
-			Vec3 v2 = vertices[indices[i + 2]];
-
-			Vec3 edge1 = v1 - v0;
-			Vec3 edge2 = v2 - v0;
-
-			Vec3 normal = Vec3::cross(edge1, edge2);
-
-			normals[indices[i]] = normal;
-			normals[indices[i + 1]] = normal;
-			normals[indices[i + 2]] = normal;
-		}
-
-		for (auto& normal : normals)
-			normal = normal.normalize();
-	}
-
-	if (textureCoords.size() == 0)
-	{
-		for (const auto& vertice : vertices)
-			textureCoords.push_back({ vertice.x, vertice.y });
-	}
-
+void	Scop::createBuffersAndArrays()
+{
+	// Generate Vertex Array Object
 	glGenVertexArrays(1, &this->VAO);
+	glBindVertexArray(VAO);
+
+	// Generate and bind the VBO for positions
 	glGenBuffers(1, &this->VBO);
-	glGenBuffers(1, &this->EBO);
-	glGenBuffers(1, &this->normalVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
+	glBufferData(GL_ARRAY_BUFFER, this->vertex_postitions.size() * sizeof(Vec3), this->vertex_postitions.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// Generate and bind the VBO for texture coordinates
 	glGenBuffers(1, &this->textureVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, this->textureVBO);
+	glBufferData(GL_ARRAY_BUFFER, this->vertex_texcoords.size() * sizeof(TextureCoord), this->vertex_texcoords.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TextureCoord), (void*)0);
+	glEnableVertexAttribArray(1);
 
-	glBindVertexArray(this->VAO);
+	// Generate and bind the VBO for normals
+	glGenBuffers(1, &this->normalVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
+	glBufferData(GL_ARRAY_BUFFER, this->vertex_normals.size() * sizeof(Vec3), this->vertex_normals.data(), GL_STATIC_DRAW);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), (void*)0);
+	glEnableVertexAttribArray(2);
 
-	// Fill EBO with indices data
+	// Generate and bind the EBO for indices
+	glGenBuffers(1, &this->EBO);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, this->indices.size() * sizeof(uint), this->indices.data(), GL_STATIC_DRAW);
 
-	// Attribute 0: vertex position
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, this->VBO);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vec3), vertices.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-
-	// Attribute 1: texture coordinates
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, this->textureVBO);
-	glBufferData(GL_ARRAY_BUFFER, this->textureCoords.size() * sizeof(TextureCoord), this->textureCoords.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-
-	// Attribute 2: normals
-	glEnableVertexAttribArray(2);
-	glBindBuffer(GL_ARRAY_BUFFER, this->normalVBO);
-	glBufferData(GL_ARRAY_BUFFER, this->normals.size() * sizeof(Vec3), this->normals.data(), GL_STATIC_DRAW);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-
 	glBindVertexArray(0);
 
-	cameraTarget = calculateModelCenterOffset();
+	this->cameraTarget = calculateModelCenterOffset();
 }
 
 float	Scop::toRadians(float degrees)

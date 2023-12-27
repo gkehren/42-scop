@@ -27,6 +27,7 @@ Scop::Scop()
 	// Use OpenGL 3.3 Core Profile
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create window
 	this->windowWidth = 1920;
@@ -108,7 +109,7 @@ Scop::Scop()
 	this->loadShader();
 
 	this->loadTexture("/home/gkehren/42-scop/ressources/brick.bmp");
-	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
+	this->loadObjFile("/home/gkehren/42-scop/ressources/untitled.obj");
 }
 
 Scop::~Scop()
@@ -175,6 +176,7 @@ void	Scop::run()
 		glBindVertexArray(this->VAO);
 		glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+		glUseProgram(0);
 
 		this->updateUI();
 
