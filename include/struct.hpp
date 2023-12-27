@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cmath>
+#include <cstring>
 
 struct Vec3 {
 	float x, y, z;
@@ -155,10 +156,10 @@ struct Mat4 {
 
 	Mat4 operator*(const Mat4& other) const {
 		Mat4 result;
-		for (int i = 0; i < 4; ++i) {
-			for (int j = 0; j < 4; ++j) {
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
 				result.data[i * 4 + j] = 0.0f;
-				for (int k = 0; k < 4; ++k) {
+				for (int k = 0; k < 4; k++) {
 					result.data[i * 4 + j] += this->data[i * 4 + k] * other.data[k * 4 + j];
 				}
 			}
@@ -303,4 +304,14 @@ struct Vertex
 	Vec3			position;
 	Vec3			normal;
 	TextureCoord	texture;
+};
+
+struct PackedVertex{
+	Vec3			position;
+	TextureCoord	uv;
+	Vec3			normal;
+
+	bool operator<(const PackedVertex that) const{
+		return memcmp((void*)this, (void*)&that, sizeof(PackedVertex))>0;
+	};
 };

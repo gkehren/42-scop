@@ -11,6 +11,7 @@
 #include "../imgui/imgui_impl_opengl3.h"
 
 typedef unsigned int uint;
+typedef unsigned short ushort;
 
 class Scop
 {
@@ -99,6 +100,7 @@ class Scop
 		void		createBuffersAndArrays();
 		void		loadObjFile(const char* filePathName);
 		void		loadTexture(const char* filename);
+		void		indexVBO(std::vector<Vec3> &out_vertices, std::vector<TextureCoord> &out_uvs, std::vector<Vec3> &out_normals);
 		Vec3		calculateModelCenterOffset();
 		float		toRadians(float degrees);
 };

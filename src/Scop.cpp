@@ -56,6 +56,8 @@ Scop::Scop()
 	ImGui_ImplOpenGL3_Init();
 
 	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
 
 	this->deltaTime = 0.0f;
 	this->lastFrame = 0.0f;
@@ -88,7 +90,7 @@ Scop::Scop()
 	this->model = Mat4();
 
 	this->lightColor = Vec3(1.0f, 1.0f, 1.0f);
-	this->lightPos = Vec3(0.0f, 10.0f, 0.0f);
+	this->lightPos = Vec3(3.0f, 10.0f, 5.0f);
 	this->objectColor = Vec3(1.0f, 0.5f, 0.31f);
 
 	this->movementSpeed = 0.05f;
@@ -109,7 +111,7 @@ Scop::Scop()
 	this->loadShader();
 
 	this->loadTexture("/home/gkehren/42-scop/ressources/brick.bmp");
-	this->loadObjFile("/home/gkehren/42-scop/ressources/untitled.obj");
+	this->loadObjFile("/home/gkehren/42-scop/ressources/42.obj");
 }
 
 Scop::~Scop()

@@ -133,15 +133,21 @@ void	Scop::loadObjFile(const char* filePathName)
 		throw std::runtime_error("Error: could not open file");
 	}
 
-	this->vertex_postitions.clear();
-	this->vertex_texcoords.clear();
-	this->vertex_normals.clear();
-	this->indices.clear();
 	glDeleteBuffers(1, &this->VBO);
 	glDeleteBuffers(1, &this->EBO);
 	glDeleteVertexArrays(1, &this->VAO);
 	glDeleteBuffers(1, &this->textureVBO);
 	glDeleteBuffers(1, &this->normalVBO);
+
+	this->vertex_postitions.clear();
+	this->vertex_texcoords.clear();
+	this->vertex_normals.clear();
+	this->indices.clear();
+
+	std::vector<uint> vertexIndices, uvIndices, normalIndices;
+	std::vector<Vec3> temp_vertices, out_vertices;
+	std::vector<TextureCoord> temp_uvs, out_uvs;
+	std::vector<Vec3> temp_normals, out_normals;
 
 	std::string line;
 	while (std::getline(objFile, line))
@@ -154,26 +160,26 @@ void	Scop::loadObjFile(const char* filePathName)
 		{
 			Vec3 vertex;
 			iss >> vertex.x >> vertex.y >> vertex.z;
-			this->vertex_postitions.push_back(vertex);
+			temp_vertices.push_back(vertex);
 		}
-		//else if (type == "vt")
-		//{
-		//	TextureCoord texture;
-		//	iss >> texture.u >> texture.v;
-		//	this->vertex_texcoords.push_back(texture);
-		//}
+		else if (type == "vt")
+		{
+			TextureCoord texture;
+			iss >> texture.u >> texture.v;
+			temp_uvs.push_back(texture);
+		}
 		else if (type == "vn")
 		{
 			Vec3 normal;
 			iss >> normal.x >> normal.y >> normal.z;
-			this->vertex_normals.push_back(normal);
+			temp_normals.push_back(normal);
 		}
 		else if (type == "f")
 		{
 			uint vp_index[3], vt_index[3], vn_index[3];
 			std::string token;
 
-			for (uint i = 0; i < 3; ++i)
+			for (uint i = 0; i < 3; i++)
 			{
 				iss >> token;
 
@@ -191,36 +197,130 @@ void	Scop::loadObjFile(const char* filePathName)
 					vn_index[i] = std::stoi(indexToken) - 1;
 			}
 
-			this->indices.push_back(vp_index[0]);
-			this->indices.push_back(vp_index[1]);
-			this->indices.push_back(vp_index[2]);
+			vertexIndices.push_back(vp_index[0]);
+			vertexIndices.push_back(vp_index[1]);
+			vertexIndices.push_back(vp_index[2]);
+
+			uvIndices.push_back(vt_index[0]);
+			uvIndices.push_back(vt_index[1]);
+			uvIndices.push_back(vt_index[2]);
+
+			normalIndices.push_back(vn_index[0]);
+			normalIndices.push_back(vn_index[1]);
+			normalIndices.push_back(vn_index[2]);
 
 			if (iss >> token)
 			{
-				this->indices.push_back(vp_index[0]);
-				this->indices.push_back(vp_index[2]);
-				this->indices.push_back(std::stoi(token) - 1);
+				vertexIndices.push_back(vp_index[0]);
+				vertexIndices.push_back(vp_index[2]);
+				vertexIndices.push_back(std::stoi(token) - 1);
+
+				uvIndices.push_back(vt_index[0]);
+				uvIndices.push_back(vt_index[2]);
+				uvIndices.push_back(std::stoi(token) - 1);
+
+				normalIndices.push_back(vn_index[0]);
+				normalIndices.push_back(vn_index[2]);
+				normalIndices.push_back(std::stoi(token) - 1);
 			}
 		}
 	}
 	objFile.close();
 
-	if (this->vertex_texcoords.empty())
+	for (uint i = 0; i < vertexIndices.size(); i++)
 	{
-		for (uint i = 0; i < this->indices.size(); i+= 3)
+		uint vertexIndex = vertexIndices[i];
+		uint uvIndex = uvIndices[i];
+		uint normalIndex = normalIndices[i];
+
+		Vec3 vertex = temp_vertices[vertexIndex];
+		out_vertices.push_back(vertex);
+
+		if (temp_uvs.size() > 0 && temp_normals.size() > 0)
 		{
-			float u = indices[i];
-			float v = indices[i + 1];
-			this->vertex_texcoords.push_back({ u, v });
+			TextureCoord texture = temp_uvs[uvIndex];
+			Vec3 normal = temp_normals[normalIndex];
+
+			out_uvs.push_back(texture);
+			out_normals.push_back(normal);
 		}
 	}
 
-	std::cout << "Number of vertices: " << this->vertex_postitions.size() << std::endl;
-	std::cout << "Number of texture coordinates: " << this->vertex_texcoords.size() << std::endl;
-	std::cout << "Number of normals: " << this->vertex_normals.size() << std::endl;
-	std::cout << "Number of indices: " << this->indices.size() << std::endl;
+	if (out_uvs.size() == 0)
+	{
+		for (uint i = 0; i < out_vertices.size(); i += 6)
+		{
+			out_uvs.push_back({ 0.0f, 0.0f });
+			out_uvs.push_back({ 0.0f, 1.0f });
+			out_uvs.push_back({ 1.0f, 1.0f });
 
+			out_uvs.push_back({ 0.0f, 0.0f });
+			out_uvs.push_back({ 1.0f, 1.0f });
+			out_uvs.push_back({ 1.0f, 0.0f });
+		}
+	}
+
+	if (out_normals.size() == 0)
+	{
+		for (uint i = 0; i < out_vertices.size(); i += 3)
+		{
+			Vec3 v0 = out_vertices[i];
+			Vec3 v1 = out_vertices[i + 1];
+			Vec3 v2 = out_vertices[i + 2];
+
+			Vec3 edge1 = v1 - v0;
+			Vec3 edge2 = v2 - v0;
+
+			Vec3 normal = Vec3::cross(edge1, edge2);
+
+			normal = Vec3::normalize(normal);
+
+			out_normals.push_back(normal);
+			out_normals.push_back(normal);
+			out_normals.push_back(normal);
+		}
+	}
+
+	indexVBO(out_vertices, out_uvs, out_normals);
 	createBuffersAndArrays();
+}
+
+bool	getSimilarVertexIndex(PackedVertex &packed, std::map<PackedVertex, ushort> &VertexToOutIndex, ushort &result)
+{
+	std::map<PackedVertex, ushort>::iterator it = VertexToOutIndex.find(packed);
+	if (it == VertexToOutIndex.end())
+		return false;
+	else
+	{
+		result = it->second;
+		return true;
+	}
+}
+
+void	Scop::indexVBO(std::vector<Vec3> &in_vertices, std::vector<TextureCoord> &in_uvs, std::vector<Vec3> &in_normals)
+{
+	std::map<PackedVertex, ushort> vertexToOutIndex;
+
+	for (uint i = 0; i < in_vertices.size(); i++)
+	{
+		PackedVertex packed = { in_vertices[i], in_uvs[i], in_normals[i] };
+
+		ushort index;
+		bool found = getSimilarVertexIndex(packed, vertexToOutIndex, index);
+
+		if (found)
+			this->indices.push_back(index);
+		else
+		{
+			this->vertex_postitions.push_back(in_vertices[i]);
+			this->vertex_texcoords.push_back(in_uvs[i]);
+			this->vertex_normals.push_back(in_normals[i]);
+
+			ushort newIndex = static_cast<ushort>(this->vertex_postitions.size() - 1);
+			this->indices.push_back(newIndex);
+			vertexToOutIndex[packed] = newIndex;
+		}
+	}
 }
 
 void	Scop::createBuffersAndArrays()
