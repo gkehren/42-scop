@@ -6,7 +6,7 @@
 #    By: gkehren <gkehren@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2023/07/30 22:16:55 by gkehren           #+#    #+#              #
-#    Updated: 2023/12/27 08:35:38 by gkehren          ###   ########.fr        #
+#    Updated: 2023/12/28 04:52:47 by gkehren          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,7 +16,7 @@ NAME:= scop
 # ------------------
 CC:=c++
 SRCPATH:=src/
-INCLUDES:= -I includes/ -I imgui/
+INCLUDES:= -I include/ -I imgui/
 LIBPATH:=lib/
 CCHPATH:=obj/
 CFLAGS:=-std=c++17 -g3 -O2
