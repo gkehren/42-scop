@@ -68,8 +68,8 @@ static uint	createShaderProgram(const char* vertexShaderSource, const char* frag
 
 void	Scop::loadShader()
 {
-	std::string vertexShaderSource = loadShaderSource("/home/gkehren/42-scop/ressources/shaders/vertex.glsl");
-	std::string fragmentShaderSource = loadShaderSource("/home/gkehren/42-scop/ressources/shaders/fragment.glsl");
+	std::string vertexShaderSource = loadShaderSource("/home/gkehren/Documents/42-scop/ressources/shaders/vertex.glsl");
+	std::string fragmentShaderSource = loadShaderSource("/home/gkehren/Documents/42-scop/ressources/shaders/fragment.glsl");
 
 	this->shaderProgram = createShaderProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str());
 

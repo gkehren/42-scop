@@ -1,25 +1,13 @@
-# **************************************************************************** #
-#                                                                              #
-#                                                         :::      ::::::::    #
-#    Makefile                                           :+:      :+:    :+:    #
-#                                                     +:+ +:+         +:+      #
-#    By: gkehren <gkehren@student.42.fr>            +#+  +:+       +#+         #
-#                                                 +#+#+#+#+#+   +#+            #
-#    Created: 2023/07/30 22:16:55 by gkehren           #+#    #+#              #
-#    Updated: 2023/12/28 04:52:47 by gkehren          ###   ########.fr        #
-#                                                                              #
-# **************************************************************************** #
-
-FILES:= main Scop shader model utils
-NAME:= scop
-
 # ------------------
-CC:=c++
-SRCPATH:=src/
-INCLUDES:= -I include/ -I imgui/
-LIBPATH:=lib/
-CCHPATH:=obj/
-CFLAGS:=-std=c++17 -g3 -O2
+CXX = g++
+CXXFLAGS = -std=c++17
+LDFLAGS = -lGL -lglfw
+INCDIR = -I include/ -I src/imgui/
+# ==================
+
+# ------ Path ------
+SRCDIR = src
+OBJDIR = obj
 # ==================
 
 # ----- Colors -----
@@ -33,33 +21,33 @@ EOC:="\033[0;0m"
 # ==================
 
 # ------ Auto ------
-SRC:=$(addprefix $(SRCPATH),$(addsuffix .cpp,$(FILES)))
-OBJ:=$(addprefix $(CCHPATH),$(addsuffix .o,$(FILES)))
-SRC+= $(wildcard imgui/*.cpp)
+SRC = $(wildcard $(SRCDIR)/*.cpp $(SRCDIR)/imgui/*.cpp )
+OBJ = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRC))
+GLAD_SRC = $(SRCDIR)/glad.c
 # ==================
-CCHF:=.cache_exists
 
-all: ${NAME}
+TARGET = scop
 
-${NAME}: ${OBJ}
+all: ${TARGET}
+
+${TARGET}: ${OBJ}
 	@echo ${CYAN} " - Compiling $@" $(RED)
-	@${CC} ${CFLAGS} ${SRC} -o ${NAME} -L$(LIBPATH) -lGLEW -lGL -lglfw
+	@${CXX} -o $@ $^ ${GLAD_SRC} ${LDFLAGS} ${INCDIR}
 	@echo $(GREEN) " - OK" $(EOC)
 
-${CCHPATH}%.o: ${SRCPATH}%.cpp
+${OBJDIR}/%.o: ${SRCDIR}/%.cpp
 	@mkdir -p $(@D)
 	@echo ${PURPLE} " - Compiling $< into $@" ${EOC}
-	@${CC} ${CFLAGS} ${INCLUDES} -c $< -o $@
+	@${CXX} ${CXXFLAGS} ${INCDIR} -c -o $@ $<
 
 %.cpp:
 	@echo ${RED}"Missing file : $@" ${EOC}
 
 clean:
-	@rm -rf ${CCHPATH}
+	@rm -rf ${OBJDIR}
 
 fclean:	clean
-	@rm -f ${NAME}
-	@rm -rf ${NAME}.dSYM/
+	@rm -f ${TARGET}
 
 re:	fclean
 	@${MAKE} all
