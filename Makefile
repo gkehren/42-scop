@@ -21,7 +21,7 @@ EOC:="\033[0;0m"
 # ==================
 
 # ------ Auto ------
-SRC = $(wildcard $(SRCDIR)/*.cpp $(SRCDIR)/imgui/*.cpp )
+SRC = $(wildcard $(SRCDIR)/*.cpp $(SRCDIR)/imgui/*.cpp $(SRCDIR)/glad.c)
 OBJ = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SRC))
 GLAD_SRC = $(SRCDIR)/glad.c
 # ==================
@@ -32,7 +32,7 @@ all: ${TARGET}
 
 ${TARGET}: ${OBJ}
 	@echo ${CYAN} " - Compiling $@" $(RED)
-	@${CXX} -o $@ $^ ${GLAD_SRC} ${LDFLAGS} ${INCDIR}
+	@${CXX} -o $@ $^ ${LDFLAGS} ${INCDIR}
 	@echo $(GREEN) " - OK" $(EOC)
 
 ${OBJDIR}/%.o: ${SRCDIR}/%.cpp

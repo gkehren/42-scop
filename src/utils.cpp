@@ -4,6 +4,10 @@
 
 void	Scop::updateUI()
 {
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+
 	if (this->totalTime >= this->updateInterval)
 	{
 		this->fps = static_cast<float>(this->frames) / this->totalTime;

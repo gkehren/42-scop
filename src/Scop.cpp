@@ -26,7 +26,7 @@ Scop::Scop()
 
 	// Use OpenGL 4.6 Core Profile
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Create window
@@ -35,7 +35,6 @@ Scop::Scop()
 	this->window = glfwCreateWindow(this->windowWidth, this->windowHeight, "scop", nullptr, nullptr);
 	if (!this->window)
 	{
-		std::cerr << "Error while creating GLFW window" << std::endl;
 		glfwTerminate();
 		throw std::runtime_error("Error while creating GLFW window");
 	}
@@ -45,7 +44,6 @@ Scop::Scop()
 	// Initialize GLAD
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		std::cerr << "Error while initializing GLAD" << std::endl;
 		throw std::runtime_error("Error while initializing GLAD");
 	}
 
@@ -109,8 +107,8 @@ Scop::Scop()
 
 	this->loadShader();
 
-	this->loadTexture("/home/gkehren/Documents/42-scop/ressources/brick.bmp");
-	this->loadObjFile("/home/gkehren/Documents/42-scop/ressources/42.obj");
+	this->loadTexture("./ressources/brick.bmp");
+	this->loadObjFile("./ressources/42.obj");
 }
 
 Scop::~Scop()
@@ -143,10 +141,6 @@ void	Scop::run()
 		this->lastFrame = currentFrame;
 		this->totalTime += this->deltaTime;
 		this->frames++;
-
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
 
 		this->cameraMovement();
 		this->objectMovement();
